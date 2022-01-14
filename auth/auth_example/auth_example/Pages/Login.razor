@@ -1,6 +1,7 @@
 ﻿@page "/login"
 @using System.Diagnostics
 @using IdentityModel.OidcClient
+@using System.Web;
 @inject NavigationManager navigation
 
 <h3>Login</h3>
@@ -11,30 +12,35 @@
 
     static string identityProvider = "http://localhost:3000";
     static string clientName = "nGZI4M1lautcI6szoXpo7";
+    //static string clientName = "BlazorExample";
     static string scope = "openid offline_access webid";
 
     private async Task LoginToSolid()
     {
         var url = await GetUrl();
         navigation.NavigateTo(url);
-
-        throw new NotImplementedException();
     }
 
     private async Task<string> GetUrl()
     {
+        // the controller at this url will handle token, etc.
+        string redirectUrl = navigation.BaseUri + "api/redirect";
+
+        Debug.WriteLine(redirectUrl);
+        Console.WriteLine(redirectUrl);
+
         var options = new OidcClientOptions
             {
                 Authority = identityProvider,
                 ClientId = clientName,
-                RedirectUri = navigation.Uri,
+                RedirectUri = redirectUrl,
                 Scope = scope,
             };
 
         var client = new OidcClient(options);
-
         var state = await client.PrepareLoginAsync();
-        string url =  state.StartUrl;
+
+        string url = state.StartUrl;
 
         url += "&prompt=consent&response_mode=query";
 
