@@ -3,3 +3,6 @@
 ################################################################################
 
 /.vs
+/auth/auth_example/.vs/auth_example
+/auth/auth_example/auth_example/bin/Debug/net6.0
+/auth/auth_example/auth_example/obj
