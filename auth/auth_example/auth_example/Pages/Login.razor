@@ -313,23 +313,9 @@
         await BrowserStorage.SetAsync("appCode", appCode);
     }
 
-    private string GenerateCodeVerifier()
-    {
-        return CryptoRandom.CreateUniqueId(32);
-    }
-
     private async Task SaveCodeVerifierToStorage(string codeVerifier)
     {
         await BrowserStorage.SetAsync("codeVerifier", codeVerifier);
-    }
-
-    private string GenerateCodeChallenge(string codeVerifier)
-    {
-        using (var sha256 = SHA256.Create())
-        {
-            var challengeBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(codeVerifier));
-            return Base64Url.Encode(challengeBytes);
-        }
     }
 
     private async Task<string?> GetCodeVerifierFromStorage()
@@ -345,12 +331,7 @@
     {
         string codeVerifier = string.Empty;
         codeVerifier = await GetCodeVerifierFromStorage();
-        if (string.IsNullOrEmpty(codeVerifier))
-        {
-            codeVerifier = GenerateCodeVerifier();
-            await SaveCodeVerifierToStorage(codeVerifier);
-        }
-
+       
         string url = identityProvider + "/idp/token";
         string clientId = await GetClientIdFromStorage();
         string clientSecret = await GetSecretFromStorage();
