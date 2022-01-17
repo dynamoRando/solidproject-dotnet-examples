@@ -280,7 +280,7 @@
                 Console.WriteLine("Save AppCode: " + appCode);
                 Debug.WriteLine("Save AppCode: " + appCode);
                 await SaveAppCodeToStorage(appCode);
-                await GetAccessAndIdToken();
+                await GetAccessAndIdTokens();
             }
 
             StateHasChanged();
@@ -330,7 +330,7 @@
         return codeVerifier;
     }
 
-    private async Task GetAccessAndIdToken()
+    private async Task GetAccessAndIdTokens()
     {
         string codeVerifier = string.Empty;
         codeVerifier = await GetCodeVerifierFromStorage();
