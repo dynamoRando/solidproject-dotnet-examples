@@ -332,6 +332,10 @@
 
     private async Task GetAccessAndIdTokens()
     {
+        // we're going to build a DPoP token and POST 
+        // request to ask for an identity and access token to do whatever we need
+        // if this succeeds, save them to storage
+
         string codeVerifier = string.Empty;
         codeVerifier = await GetCodeVerifierFromStorage();
        
@@ -339,7 +343,8 @@
         string clientId = await GetClientIdFromStorage();
         string clientSecret = await GetSecretFromStorage();
 
-        // for this requset, we need to send a DPoP token, which itself is a Json Web Token (JWT)
+        // for this request, we need to send a DPoP token, which itself is a Json Web Token (JWT)
+        // so let's make one
         string jwtToken = BuildJWTToken();
 
         // for sanity sake, validate this token we're about to send over the wire
@@ -505,6 +510,8 @@
 
         // debugging
         var text = new JwtSecurityTokenHandler().WriteToken(dpopToken);
+
+        // we can validate the text at https://jwt.io/ if we want
         return text;
     }
 
