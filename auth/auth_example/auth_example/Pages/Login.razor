@@ -33,7 +33,6 @@
     // also a useful reference:
     // https://referbruv.com/blog/posts/implementing-authorization-code-grant-using-identityserver4-with-pkce
 
-
     // the address of the Community Server
     static string identityProvider = "http://localhost:3000";
 
@@ -47,7 +46,7 @@
     // after the user logs in
     string appCode = string.Empty;
 
-
+    // some helper private fields
     static bool HasGeneratedKeys = false;
     RSAParameters PublicKey;
     RSAParameters PrivateKey;
@@ -62,7 +61,7 @@
         // if we had this, we wouldn't need to leverage dynamic client registration (see section 5.2 in the above page)
 
         // if you're using https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow we are on Step 6
-        // see the note " If the app doesn’t have a URI, you can either register
+        // see the note "If the app doesn’t have a URI, you can either register
         // an app using static registration via some UI on the OP or use dynamic registration."
         await RegisterAppWithDynamicClientRegistration();
 
@@ -80,6 +79,7 @@
         // after that happens we need to generate a DPoP key pair
         // in order to request a token from the IdP
         // (Steps 12, 13, and 14 on this page https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow)
+        // if that succeeds, we will have tokens we can use to access the user's pod.
     }
 
     private async Task RegisterAppWithDynamicClientRegistration()
@@ -109,27 +109,13 @@
         */
 
         string content = @"
-    {
-       ""application_type"": ""web"",
-       ""redirect_uris"":
-       [""https://localhost:7030/login""],
-       ""client_name"": ""BlazorExample"",
-       ""code_challenge_method"": ""S256"",
-       ""code_challenge"": ""foobar""
-    }
-    ";
-
-        string codeVerifier = string.Empty;
-        codeVerifier = await GetCodeVerifierFromStorage();
-        if (string.IsNullOrEmpty(codeVerifier))
         {
-            codeVerifier = GenerateCodeVerifier();
-            await SaveCodeVerifierToStorage(codeVerifier);
+           ""application_type"": ""web"",
+           ""redirect_uris"":
+           [""https://localhost:7030/login""],
+           ""client_name"": ""BlazorExample""
         }
-
-        Console.WriteLine($"CodeVerifier: {codeVerifier}");
-
-        content = content.Replace("foobar", codeVerifier);
+        ";
 
         var stringContent = new StringContent(content, Encoding.UTF8, "application/json");
         var result = await client.PostAsync(url, stringContent);
@@ -291,7 +277,7 @@
                 Console.WriteLine("Save AppCode: " + appCode);
                 Debug.WriteLine("Save AppCode: " + appCode);
                 await SaveAppCodeToStorage(appCode);
-                await GetToken();
+                await GetAccessAndIdToken();
             }
 
             StateHasChanged();
@@ -355,7 +341,7 @@
         return codeVerifier;
     }
 
-    private async Task GetToken()
+    private async Task GetAccessAndIdToken()
     {
         string codeVerifier = string.Empty;
         codeVerifier = await GetCodeVerifierFromStorage();
@@ -369,6 +355,7 @@
         string clientId = await GetClientIdFromStorage();
         string clientSecret = await GetSecretFromStorage();
 
+        // for this requset, we need to send a DPoP token, which itself is a Json Web Token (JWT)
         string jwtToken = BuildJWTToken();
 
         // for sanity sake, validate this token we're about to send over the wire
@@ -498,7 +485,9 @@
         var algMap = new Dictionary<string, string>();
         algMap.Add("alg", "RS256");
 
-        var simpleToken = new JwtSecurityToken(issuer,
+        // I build a base token because I'm going to have to heavily modify the final JWT token,
+        // so this is a starting point to get the claims in the inital token
+        var baseToken = new JwtSecurityToken(issuer,
           audience,
           expires: jwtValidity,
           signingCredentials: creds);
@@ -507,11 +496,12 @@
         // per the above, we need to send as "dpop+jwt"
         var header = new JwtHeader(creds, algMap, "dpop+jwt");
 
+        // per the above link, send the public key in the header
         var jwk = GetPublicJsonWebKey();
-
         header.Add("jwk", jwk);
 
-        var payload = new JwtPayload(simpleToken.Claims);
+        // add the inital claims
+        var payload = new JwtPayload(baseToken.Claims);
 
         // we want to only use this token at the Community Solid server
         payload.AddClaim(new Claim("htu", identityProvider + "/idp/token"));
@@ -523,9 +513,10 @@
         payload.AddClaim(new Claim("jti", Guid.NewGuid().ToString()));
 
         // we rebuild the token with all the additional headers, claims, etc.
-        var dpopToken = new JwtSecurityToken(header, payload, header.ToString(), payload.ToString(), simpleToken.RawSignature);
+        var dpopToken = new JwtSecurityToken(header, payload, header.ToString(), payload.ToString(), baseToken.RawSignature);
 
-        // the date when the token was issued, must be an integer
+        // the date when the token was issued, must be an integer (not a string)
+        // this is required
         dpopToken.Payload.AddClaim(new Claim("iat", iat.ToString(), ClaimValueTypes.Integer));
 
         // debugging
