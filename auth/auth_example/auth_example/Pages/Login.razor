@@ -34,6 +34,8 @@
     // the scope of our request
     static string scope = "openid offline_access webid";
 
+    string appCode = string.Empty;
+
     private async Task LoginToSolid()
     {
         // first, register ourself to the Identity Provider (IdP)
@@ -64,31 +66,31 @@
         // build a manual request via an HTTP post
         // the content of our http request will be a json object with the needed values
 
-        // for more information see 
+        // for more information see
         // https://openid.net/specs/openid-connect-registration-1_0.html#ClientMetadata
         // and https://openid.net/specs/openid-connect-registration-1_0.html#RegistrationRequest
         var client = new HttpClient();
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-         /*
-         application type: the type of application that we are
-         redirect uris: the addresses the identity provider will send the user back to after login
-         client name: the name of our app
-         */
+        /*
+        application type: the type of application that we are
+        redirect uris: the addresses the identity provider will send the user back to after login
+        client name: the name of our app
+        */
 
         string content = @"
-        {
-           ""application_type"": ""web"",
-           ""redirect_uris"":
-           [""https://localhost:7030/api/redirect/""],
-           ""client_name"": ""BlazorExample""
-        }
-        ";
+    {
+       ""application_type"": ""web"",
+       ""redirect_uris"":
+       [""https://localhost:7030/login""],
+       ""client_name"": ""BlazorExample""
+    }
+    ";
         var stringContent = new StringContent(content, Encoding.UTF8, "application/json");
         var result = await client.PostAsync(url, stringContent);
 
-        // get the data back as a string of json, 
-        // deseralize it to an object that we understand, 
+        // get the data back as a string of json,
+        // deseralize it to an object that we understand,
         // and save the client id + secret for logging in
         var data = await result.Content.ReadAsStringAsync();
         var item = JsonConvert.DeserializeObject<RegisterData>(data);
@@ -143,7 +145,7 @@
         Debug.WriteLine(clientId);
         Console.WriteLine(clientId);
 
-        string redirect = navigation.BaseUri + "api/redirect/";
+        string redirect = navigation.BaseUri + "login";
 
         // https://identitymodel.readthedocs.io/en/latest/native/manual.html?highlight=OidcClientOptions
         var options = new OidcClientOptions
@@ -199,7 +201,7 @@
     /// Returns the client id from storage, or if not set, empty string
     /// </summary>
     /// <returns></returns>
-    public async Task<string?> GetClientIdFromStorage()
+    private async Task<string?> GetClientIdFromStorage()
     {
         string? clientId;
 
@@ -207,4 +209,53 @@
         clientId = result.Success ? result.Value : "";
         return clientId;
     }
+
+    protected async override void OnInitialized()
+    {
+        GetQueryStringValues();
+        navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!string.IsNullOrEmpty(appCode))
+            {
+                Console.WriteLine("Save AppCode: " + appCode);
+                Debug.WriteLine("Save AppCode: " + appCode);
+                await SaveAppCodeToStorage(appCode);
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    void HandleLocationChanged(object sender, LocationChangedEventArgs e)
+    {
+        GetQueryStringValues();
+        StateHasChanged();
+    }
+
+    void GetQueryStringValues()
+    {
+        navigation.TryGetQueryString<string>("code", out appCode);
+
+        if (!string.IsNullOrEmpty(appCode))
+        {
+            Console.WriteLine("AppCode: " + appCode);
+            Debug.WriteLine("AppCode: " + appCode);
+        }
+    }
+
+    public void Dispose()
+    {
+        navigation.LocationChanged -= HandleLocationChanged;
+    }
+
+    private async Task SaveAppCodeToStorage(string appCode)
+    {
+        await BrowserStorage.SetAsync("appCode", appCode);
+    }
+
 }

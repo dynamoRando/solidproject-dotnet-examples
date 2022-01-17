@@ -18,7 +18,10 @@ namespace auth_example.Pages
         [HttpGet]
         public string Get()
         {
-            // https://identitymodel.readthedocs.io/en/latest/client/token.html#requesting-a-token-using-the-authorization-code-grant-type
+        // https://identitymodel.readthedocs.io/en/latest/client/token.html#requesting-a-token-using-the-authorization-code-grant-type
+
+        // or maybe if we could do it on the login page?
+        // https://chrissainty.com/working-with-query-strings-in-blazor/
             var info = Request.QueryString.Value;
 
             Console.WriteLine("Redirect!");
