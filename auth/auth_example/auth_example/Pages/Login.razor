@@ -61,6 +61,7 @@
         // after the user logs in, the IdP (the Solid Community Server)
         // will redirect the user back to this page
         // with an app code in the Query String that we should parse out
+        // this is handled by OnInitialized(), OnAfterRenderAsync(), and HandleLocationChanged()
 
         // after that happens we need to generate a DPoP key pair
         // in order to request a token from the IdP
