@@ -1,5 +1,6 @@
 ﻿@page "/login"
 @using System.Diagnostics
+@using IdentityModel
 @using IdentityModel.Client
 @using IdentityModel.OidcClient
 @using System.Web;
@@ -8,6 +9,7 @@
 @using System.Text
 @using System.Net.Http.Headers
 @using Newtonsoft.Json
+@using System.Security.Cryptography
 @inject NavigationManager navigation
 @inject ProtectedLocalStorage BrowserStorage
 
@@ -48,7 +50,7 @@
         // if we had this, we wouldn't need to leverage dynamic client registration (see section 5.2 in the above page)
 
         // if you're using https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow we are on Step 6
-        // see the note " If the app doesn’t have a URI, you can either register 
+        // see the note " If the app doesn’t have a URI, you can either register
         // an app using static registration via some UI on the OP or use dynamic registration."
         await RegisterAppWithDynamicClientRegistration();
 
@@ -95,13 +97,13 @@
         */
 
         string content = @"
-        {
-           ""application_type"": ""web"",
-           ""redirect_uris"":
-           [""https://localhost:7030/login""],
-           ""client_name"": ""BlazorExample""
-        }
-        ";
+    {
+       ""application_type"": ""web"",
+       ""redirect_uris"":
+       [""https://localhost:7030/login""],
+       ""client_name"": ""BlazorExample""
+    }
+    ";
         var stringContent = new StringContent(content, Encoding.UTF8, "application/json");
         var result = await client.PostAsync(url, stringContent);
 
@@ -213,6 +215,15 @@
         await BrowserStorage.SetAsync("secret", secret);
     }
 
+    private async Task<string?> GetSecretFromStorage()
+    {
+        string? item;
+
+        var result = await BrowserStorage.GetAsync<string>("secret");
+        item = result.Success ? result.Value : "";
+        return item;
+    }
+
     /// <summary>
     /// Returns the client id from storage, or if not set, empty string
     /// </summary>
@@ -284,6 +295,60 @@
     private async Task SaveAppCodeToStorage(string appCode)
     {
         await BrowserStorage.SetAsync("appCode", appCode);
+    }
+
+    private string GenerateCodeVerifier()
+    {
+        return CryptoRandom.CreateUniqueId(32);
+    }
+
+    private async Task SaveCodeVerifierToStorage(string codeVerifier)
+    {
+        await BrowserStorage.SetAsync("codeVerifier", codeVerifier);
+    }
+
+    private string GenerateCodeChallenge(string codeVerifier)
+    {
+        using (var sha256 = SHA256.Create())
+        {
+            var challengeBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(codeVerifier));
+            return Base64Url.Encode(challengeBytes);
+        }
+    }
+
+    private async Task<string?> GetCodeVerifierFromStorage()
+    {
+        string? codeVerifier;
+
+        var result = await BrowserStorage.GetAsync<string>("codeVerifier");
+        codeVerifier = result.Success ? result.Value : "";
+        return codeVerifier;
+    }
+
+    private async Task GetToken()
+    {
+        string codeVerifier = string.Empty;
+        codeVerifier = await GetCodeVerifierFromStorage();
+        if (string.IsNullOrEmpty(codeVerifier))
+        {
+            codeVerifier = GenerateCodeVerifier();
+            await SaveCodeVerifierToStorage(codeVerifier);
+        }
+
+        var client = new HttpClient();
+        var response = await client.RequestAuthorizationCodeTokenAsync(new AuthorizationCodeTokenRequest
+            {
+                Address = identityProvider + "/idp/token",
+
+                ClientId = await GetClientIdFromStorage(),
+                ClientSecret = await GetSecretFromStorage(),
+
+                Code = appCode,
+                RedirectUri = "https://app.com/callback",
+
+                // optional PKCE parameter
+                CodeVerifier = codeVerifier
+            });
     }
 
 }
