@@ -15,20 +15,10 @@ namespace auth_example.Pages
         // the address of the Community Server
         static string identityProvider = "http://localhost:3000";
 
-        public IActionResult Index()
-        {
-            var info = Request.QueryString.Value;
-
-            Console.WriteLine("Redirect!");
-            Console.WriteLine(info);
-            Debug.Write(info);
-
-            return Redirect("/");
-        }
-
         [HttpGet]
         public string Get()
         {
+            // https://identitymodel.readthedocs.io/en/latest/client/token.html#requesting-a-token-using-the-authorization-code-grant-type
             var info = Request.QueryString.Value;
 
             Console.WriteLine("Redirect!");
@@ -39,8 +29,8 @@ namespace auth_example.Pages
             {
                 var values = HttpUtility.ParseQueryString(info);
 
-                string appCode = values.GetValues(0).First();
-                Console.WriteLine(appCode);
+                string authCode = values.GetValues(0).First();
+                Console.WriteLine(authCode);
             }
 
             return string.Empty;
