@@ -448,8 +448,16 @@
 
         if (response.HttpStatusCode == HttpStatusCode.OK)
         {
-            // we should save the token off
-            throw new NotImplementedException("Need to save token");
+            var id_token = response.IdentityToken;
+            var access_token = response.AccessToken;
+
+            var jwt_id = new JwtSecurityToken(id_token);
+            var jwt_access = new JwtSecurityToken(access_token);
+
+            await SaveIdTokenToStorage(id_token);
+            await SaveAccessTokenToStorage(access_token);
+
+            Console.WriteLine("Get Token: Tokens Saved To Storage");
         }
         else
         {
@@ -576,6 +584,16 @@
     private RsaSecurityKey GetKeyAsRsa(RSAParameters parameter)
     {
         return new RsaSecurityKey(parameter);
+    }
+
+    private async Task SaveAccessTokenToStorage(string access)
+    {
+        await BrowserStorage.SetAsync("access_token", access);
+    }
+
+    private async Task SaveIdTokenToStorage(string id)
+    {
+        await BrowserStorage.SetAsync("id_token", id);
     }
 
 }
