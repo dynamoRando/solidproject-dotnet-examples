@@ -8,8 +8,15 @@
 @using System.Net
 @using System.Text
 @using System.Net.Http.Headers
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.IdentityModel.Tokens
 @using Newtonsoft.Json
 @using System.Security.Cryptography
+@using System.IdentityModel.Tokens.Jwt
+@using System.Security.Claims
+@using Org.BouncyCastle.Crypto
+@using Org.BouncyCastle.Crypto.Generators
+@using Org.BouncyCastle.Security
 @inject NavigationManager navigation
 @inject ProtectedLocalStorage BrowserStorage
 
@@ -39,6 +46,11 @@
     // this is the auth or app code returned to us by the IdP
     // after the user logs in
     string appCode = string.Empty;
+
+
+    static bool HasGeneratedKeys = false;
+    RSAParameters PublicKey;
+    RSAParameters PrivateKey;
 
     private async Task LoginToSolid()
     {
@@ -101,9 +113,24 @@
        ""application_type"": ""web"",
        ""redirect_uris"":
        [""https://localhost:7030/login""],
-       ""client_name"": ""BlazorExample""
+       ""client_name"": ""BlazorExample"",
+       ""code_challenge_method"": ""S256"",
+       ""code_challenge"": ""foobar""
     }
     ";
+
+        string codeVerifier = string.Empty;
+        codeVerifier = await GetCodeVerifierFromStorage();
+        if (string.IsNullOrEmpty(codeVerifier))
+        {
+            codeVerifier = GenerateCodeVerifier();
+            await SaveCodeVerifierToStorage(codeVerifier);
+        }
+
+        Console.WriteLine($"CodeVerifier: {codeVerifier}");
+
+        content = content.Replace("foobar", codeVerifier);
+
         var stringContent = new StringContent(content, Encoding.UTF8, "application/json");
         var result = await client.PostAsync(url, stringContent);
 
@@ -186,6 +213,8 @@
 
         string url = state.StartUrl;
 
+        await SaveCodeVerifierToStorage(state.CodeVerifier);
+
         url += "&prompt=consent&response_mode=query";
 
         Debug.WriteLine(url);
@@ -262,6 +291,7 @@
                 Console.WriteLine("Save AppCode: " + appCode);
                 Debug.WriteLine("Save AppCode: " + appCode);
                 await SaveAppCodeToStorage(appCode);
+                await GetToken();
             }
 
             StateHasChanged();
@@ -335,20 +365,217 @@
             await SaveCodeVerifierToStorage(codeVerifier);
         }
 
+        string url = identityProvider + "/idp/token";
+        string clientId = await GetClientIdFromStorage();
+        string clientSecret = await GetSecretFromStorage();
+
+        string jwtToken = BuildJWTToken();
+
+        // for sanity sake, validate this token we're about to send over the wire
+        // this step isn't needed, it's just for sanity sake
+        var tokenHandler = new JwtSecurityTokenHandler();
+
+        var validationParameters = new TokenValidationParameters
+            {
+                // Clock skew compensates for server time drift.
+                // We recommend 5 minutes or less:
+                ClockSkew = TimeSpan.FromMinutes(5),
+
+                // Specify the key used to sign the token:
+                IssuerSigningKey = GetKeyAsRsa(PrivateKey),
+
+                RequireSignedTokens = true,
+
+                // Ensure the token hasn't expired:
+                RequireExpirationTime = true,
+
+                ValidateLifetime = true,
+
+                // Ensure the token audience matches our audience value (default true):
+                ValidateAudience = true,
+
+                ValidAudience = navigation.BaseUri + "login",
+
+                // Ensure the token was issued by a trusted authorization server (default true):
+                ValidateIssuer = true,
+
+                ValidIssuer = navigation.BaseUri + "login"
+            };
+
+        SecurityToken token;
+        tokenHandler.ValidateToken(jwtToken, validationParameters, out token);
+
+        if (tokenHandler.CanReadToken(jwtToken))
+        {
+            Console.WriteLine("Get Token: Token Is Valid");
+        }
+
+        Console.WriteLine($"Get Token: Address {url}");
+        Console.WriteLine($"Get Token: ClientId {clientId}");
+        Console.WriteLine($"Get Token: Secret {clientSecret}");
+        Console.WriteLine($"Get Token: AppCode {appCode}");
+        Console.WriteLine($"Get Token: CodeVerifier {codeVerifier}");
+        Console.WriteLine($"Get Token: JWTToken {jwtToken}");
+
         var client = new HttpClient();
+        client.DefaultRequestHeaders.Clear();
+
+        // per https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow
+        // send the token in the header
+        client.DefaultRequestHeaders.Add("DPoP", jwtToken);
+
+        Console.WriteLine("Get Token: Request started...");
+
         var response = await client.RequestAuthorizationCodeTokenAsync(new AuthorizationCodeTokenRequest
             {
                 Address = identityProvider + "/idp/token",
 
-                ClientId = await GetClientIdFromStorage(),
-                ClientSecret = await GetSecretFromStorage(),
+                ClientId = clientId,
+                ClientSecret = clientSecret,
 
                 Code = appCode,
-                RedirectUri = "https://app.com/callback",
+                RedirectUri = navigation.BaseUri + "login",
 
                 // optional PKCE parameter
-                CodeVerifier = codeVerifier
+                CodeVerifier = codeVerifier,
+
+                GrantType = "authorization_code",
+
+                ClientCredentialStyle = ClientCredentialStyle.PostBody
             });
+
+        Console.WriteLine("Token Response:" + response.HttpStatusCode.ToString());
+
+        if (response.HttpStatusCode == HttpStatusCode.OK)
+        {
+            // we should save the token off
+            throw new NotImplementedException("Need to save token");
+        }
+        else
+        {
+            throw new Exception(response.ErrorDescription);
+        }
+    }
+
+    private string BuildJWTToken()
+    {
+        if (!HasGeneratedKeys)
+        {
+            GenerateKeys();
+        }
+
+        // stolen from the internet to compute iat, exp values
+        var utc0 = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+        var issueTime = DateTime.UtcNow;
+
+        var iat = (int)issueTime.Subtract(utc0).TotalSeconds;
+        var exp = (int)issueTime.AddMinutes(55).Subtract(utc0).TotalSeconds;
+
+        // a secret key that we know
+        var key = new RsaSecurityKey(PrivateKey);
+
+        // how this token is generated
+        var creds = new SigningCredentials(key, SecurityAlgorithms.RsaSha256);
+
+        // who issued the key, in this case, ourselves
+        var issuer = navigation.BaseUri + "login";
+
+        // who this for, in this case, ourselves
+        var audience = navigation.BaseUri + "login";
+
+        // how long is this token good for
+        var jwtValidity = DateTime.Now.AddDays(1);
+
+        // identify the type of crypto for our keys
+        var algMap = new Dictionary<string, string>();
+        algMap.Add("alg", "RS256");
+
+        var simpleToken = new JwtSecurityToken(issuer,
+          audience,
+          expires: jwtValidity,
+          signingCredentials: creds);
+
+        // https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow
+        // per the above, we need to send as "dpop+jwt"
+        var header = new JwtHeader(creds, algMap, "dpop+jwt");
+
+        var jwk = GetPublicJsonWebKey();
+
+        header.Add("jwk", jwk);
+
+        var payload = new JwtPayload(simpleToken.Claims);
+
+        // we want to only use this token at the Community Solid server
+        payload.AddClaim(new Claim("htu", identityProvider + "/idp/token"));
+
+        // only on post methods
+        payload.AddClaim(new Claim("htm", "POST"));
+
+        // unique identifier for the token
+        payload.AddClaim(new Claim("jti", Guid.NewGuid().ToString()));
+
+        // we rebuild the token with all the additional headers, claims, etc.
+        var dpopToken = new JwtSecurityToken(header, payload, header.ToString(), payload.ToString(), simpleToken.RawSignature);
+
+        // the date when the token was issued, must be an integer
+        dpopToken.Payload.AddClaim(new Claim("iat", iat.ToString(), ClaimValueTypes.Integer));
+
+        // debugging
+        var text = new JwtSecurityTokenHandler().WriteToken(dpopToken);
+        return text;
+    }
+
+    /// <summary>
+    /// Pulls the public key from as a JsonWebKey, if available. If not, it will generate it.
+    /// </summary>
+    /// <returns>The Public Key in JsonWebKey format</returns>
+    private JsonWebKey GetPublicJsonWebKey()
+    {
+        if (!HasGeneratedKeys)
+        {
+            GenerateKeys();
+        }
+
+        var key = new RsaSecurityKey(PublicKey);
+        return JsonWebKeyConverter.ConvertFromRSASecurityKey(key);
+    }
+
+    /// <summary>
+    /// Pulls the private key from as a JsonWebKey, if available. If not, it will generate it.
+    /// </summary>
+    /// <returns>The Private Key in JsonWebKey format</returns>
+    private JsonWebKey GetPrivateJsonWebKey()
+    {
+        if (!HasGeneratedKeys)
+        {
+            GenerateKeys();
+        }
+
+        var key = new RsaSecurityKey(PrivateKey);
+        return JsonWebKeyConverter.ConvertFromRSASecurityKey(key);
+    }
+
+    /// <summary>
+    /// Generates asymetric keys (RSA) and sets the Public/Private keys for this page.
+    /// </summary>
+    private void GenerateKeys()
+    {
+        var rsa = RSA.Create();
+
+        PublicKey = rsa.ExportParameters(false);
+        PrivateKey = rsa.ExportParameters(true);
+
+        HasGeneratedKeys = true;
+    }
+
+    /// <summary>
+    /// Returns the RSA key as an RSA Security Key. Used in generating a JsonWebKey.
+    /// </summary>
+    /// <param name="parameter">RSAParameter (usually a generated RSA public/private key)</param>
+    /// <returns>The key as an RSA Security Key</returns>
+    private RsaSecurityKey GetKeyAsRsa(RSAParameters parameter)
+    {
+        return new RsaSecurityKey(parameter);
     }
 
 }
