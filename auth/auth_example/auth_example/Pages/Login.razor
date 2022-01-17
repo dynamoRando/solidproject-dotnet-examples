@@ -17,46 +17,96 @@
 
 @code {
 
+    // FYI:
+    // for information about the overall open-id flow in Solid, see
+    // https://solid.github.io/solid-oidc/
+    // https://solid.github.io/solid-oidc/primer/
+    // also a useful reference:
+    // https://referbruv.com/blog/posts/implementing-authorization-code-grant-using-identityserver4-with-pkce
+
+
+    // the address of the Community Server
     static string identityProvider = "http://localhost:3000";
+
+    // an identifier of our app
     static string clientName = "BlazorExample";
+
+    // the scope of our request
     static string scope = "openid offline_access webid";
 
     private async Task LoginToSolid()
     {
+        // first, register ourself to the Identity Provider (IdP)
+        // in this case, the Community Server
+        // we're doing this because our app is not leveraging a Client Id Document, see:
+        // https://solid.github.io/solid-oidc/#clientids-document
+        // and section 5 overall on that page
+        // if we had this, we wouldn't need to leverage dynamic client registration (see section 5.2 in the above page)
+        await RegisterAppWithDynamicClientRegistration();
 
-        //await RegisterApp();
-        await RegisterAppManually();
-        var url = await GetUrl();
+        // now determine the login url
+        var url = await GetLoginUrl();
+
+        // and send the user to it
         navigation.NavigateTo(url);
     }
 
-    private async Task RegisterAppManually()
+    private async Task RegisterAppWithDynamicClientRegistration()
     {
+        // for information on Dynamic Client Registration, see
+        // https://openid.net/specs/openid-connect-registration-1_0.html
+
+        // this value is derived from examining the result at
+        // https://<identityprovider>/.well-known/openid-configuration (you can navigate to this in your browser)
+        // anyone who is implementing OpenId will have this
         string url = identityProvider + "/idp/reg";
+
+        // build a manual request via an HTTP post
+        // the content of our http request will be a json object with the needed values
+
+        // for more information see 
+        // https://openid.net/specs/openid-connect-registration-1_0.html#ClientMetadata
+        // and https://openid.net/specs/openid-connect-registration-1_0.html#RegistrationRequest
         var client = new HttpClient();
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        
+
+         /*
+         application type: the type of application that we are
+         redirect uris: the addresses the identity provider will send the user back to after login
+         client name: the name of our app
+         */
+
         string content = @"
         {
            ""application_type"": ""web"",
            ""redirect_uris"":
-           [""https://localhost:7030/"",
-           ""https://localhost:7030/api/redirect""],
+           [""https://localhost:7030/api/redirect/""],
            ""client_name"": ""BlazorExample""
         }
         ";
         var stringContent = new StringContent(content, Encoding.UTF8, "application/json");
         var result = await client.PostAsync(url, stringContent);
+
+        // get the data back as a string of json, 
+        // deseralize it to an object that we understand, 
+        // and save the client id + secret for logging in
         var data = await result.Content.ReadAsStringAsync();
         var item = JsonConvert.DeserializeObject<RegisterData>(data);
 
-        SaveClientIdToStorage(item.client_id);
-        SaveSecretToStorage(item.client_secret);
+        // save the values returned to us to local browser storage
+        if (item is not null)
+        {
+            await SaveClientIdToStorage(item.client_id);
+            await SaveSecretToStorage(item.client_secret);
+        }
     }
 
     private async Task RegisterApp()
     {
-
+        // this method does not work
+        // for some reason using DynamicClientRegistrationDocument seems to make
+        // the identity provider think we are not sending all the fields needed
+        // when we should be able to simply omit fields that are optional
         var client = new HttpClient();
         var doc = new DynamicClientRegistrationDocument();
         doc.RedirectUris = new string[1] { navigation.BaseUri };
@@ -78,28 +128,37 @@
 
         await SaveClientIdToStorage(clientId);
         await SaveSecretToStorage(secret);
-
     }
 
-    private async Task<string> GetUrl()
+    private async Task<string> GetLoginUrl()
     {
-        // the controller at this url will handle token, etc.
-        //string redirectUrl = navigation.BaseUri + "api/redirect";
-
-        Debug.WriteLine(navigation.BaseUri);
-        Console.WriteLine(navigation.BaseUri);
+        // we need to get to the login page of the identity provider
+        // and give it our app information that we obtained from dynamic registration
+        // this is usually http://<identityprovider>/idp/auth
+        // and in the case of the community server, can be found by inspecting
+        // https://<identityprovider>/.well-known/openid-configuration
 
         var clientId = await GetClientIdFromStorage();
 
         Debug.WriteLine(clientId);
         Console.WriteLine(clientId);
 
+        string redirect = navigation.BaseUri + "api/redirect/";
+
+        // https://identitymodel.readthedocs.io/en/latest/native/manual.html?highlight=OidcClientOptions
         var options = new OidcClientOptions
             {
+                // who is authenticating us, in this case, the community server
                 Authority = identityProvider,
+
+                // our client id from earlier when we identfied our app (registered via dynamic registration)
                 ClientId = clientId,
-                RedirectUri = navigation.BaseUri,
-                Scope = scope,
+
+                // once we've logged in, tell the identity server where to send the user back to (in this case, our app)
+                RedirectUri = redirect,
+
+                // the scope
+                Scope = scope
             };
 
         var client = new OidcClient(options);
@@ -113,19 +172,33 @@
         Console.WriteLine(url);
 
         return url;
-
     }
 
+
+    /// <summary>
+    /// Saves the specified client id to browser storage
+    /// </summary>
+    /// <param name="clientId"></param>
+    /// <returns></returns>
     private async Task SaveClientIdToStorage(string clientId)
     {
         await BrowserStorage.SetAsync("clientId", clientId);
     }
 
+    /// <summary>
+    /// Saves the specified secret to browser storage
+    /// </summary>
+    /// <param name="secret"></param>
+    /// <returns></returns>
     private async Task SaveSecretToStorage(string secret)
     {
         await BrowserStorage.SetAsync("secret", secret);
     }
 
+    /// <summary>
+    /// Returns the client id from storage, or if not set, empty string
+    /// </summary>
+    /// <returns></returns>
     public async Task<string?> GetClientIdFromStorage()
     {
         string? clientId;
