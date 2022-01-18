@@ -1,0 +1,21 @@
+﻿@page "/userinfo"
+
+<h3>UserInfo</h3>
+
+<p>Use this page only after logging in. Click the button to get your card information.</p>
+
+<button class="btn btn-primary" @onclick="GetCardInformation">Get Card Information</button>
+
+@code {
+
+    // https://solid.github.io/solid-oidc/primer/#request-flow
+
+    static string cardUrl = "http://localhost:3000/profile/card#me";
+
+    private async Task GetCardInformation()
+    {
+        var client = new HttpClient();
+        var result = await client.GetAsync(cardUrl);
+    }
+
+}

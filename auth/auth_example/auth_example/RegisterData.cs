@@ -1,4 +1,4 @@
-﻿namespace auth_example
+﻿namespace SolidDotNet
 {
     /// <summary>
     /// A generated class representing the Json sent back from the Identity Provider after dynamic client registration

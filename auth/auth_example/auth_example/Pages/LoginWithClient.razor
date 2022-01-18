@@ -1,0 +1,58 @@
+﻿@page "/loginclient"
+@using SolidDotNet
+@inject SolidDotNet.SolidClient client
+@inject NavigationManager navigation
+<h3>LoginWithClient</h3>
+
+
+<button class="btn btn-primary" @onclick="LoginToSolid">Login To Solid Community Server</button>
+
+@code {
+
+    string identityProvider = "http://localhost:3000";
+    string appName = "BlazorExampleClient";
+
+    private async Task LoginToSolid()
+    {
+        client.SetIdentityProvider(identityProvider);
+        string[] redirectUris = new string[1] { "https://localhost:7030/loginclient" };
+        await client.RegisterAppAsync(redirectUris, appName);
+
+        var url = await client.GetLoginUrl(redirectUris.First());
+        navigation.NavigateTo(url);
+    }
+
+    protected async override void OnInitialized()
+    {
+        GetQueryStringValues();
+        navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    void GetQueryStringValues()
+    {
+        string appCode;
+        navigation.TryGetQueryString<string>("code", out appCode);
+        client.SetAppCode(appCode);
+    }
+
+    void HandleLocationChanged(object sender, LocationChangedEventArgs e)
+    {
+        GetQueryStringValues();
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!string.IsNullOrEmpty(client.AppCode))
+            {
+                string audienceAndIssuerUrl = navigation.BaseUri + "loginclient";
+                await client.GetAccessAndIdTokens(audienceAndIssuerUrl, audienceAndIssuerUrl, identityProvider + "/idp/token");
+            }
+
+            StateHasChanged();
+        }
+    }
+
+}
