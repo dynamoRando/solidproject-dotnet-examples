@@ -380,6 +380,24 @@
         // send the token in the header
         client.DefaultRequestHeaders.Add("DPoP", jwtToken);
 
+        /*
+        https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow
+        Essentially, we are trying to build a POST request in Step 14
+        The example below is taken from that page:
+
+        POST https://secureauth.example/token
+        Headers: {
+          "DPoP": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0IiwiandrIjp7Imt0eSI6IkVDIiwia2lkIjoiZkJ1STExTkdGbTQ4Vlp6RzNGMjVDOVJmMXYtaGdEakVnV2pEQ1BrdV9pVSIsInVzZSI6InNpZyIsImFsZyI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiOWxlT2gxeF9IWkhzVkNScDcyQzVpR01jek1nUnpDUFBjNjBoWldfSFlLMCIsInkiOiJqOVVYcnRjUzRLVzBIYmVteW1vRWlMXzZ1cko0TFFHZXJQZXVNaFNEaV80In19.eyJodHUiOiJodHRwczovL3NlY3VyZWF1dGguZXhhbXBsZS90b2tlbiIsImh0bSI6InBvc3QiLCJqdGkiOiI0YmEzZTllZi1lOThkLTQ2NDQtOTg3OC03MTYwZmE3ZDNlYjgiLCJpYXQiOjE2MDMzMDYxMjgsImV4cCI6MTYwMzMwOTcyOH0.2lbgLoRCkj0MsDc9BpquoaYuq0-XwRf_URdXru2JKrVzaWUqQfyKRK76_sQ0aJyVwavM3pPswLlHq2r9032O7Q",
+          "content-type": "application/x-www-form-urlencoded"
+        }
+        Body:
+          grant_type=authorization_code&
+          code_verifier=JXPOuToEB7&
+          code=m-OrTPHdRsm8W_e9P0J2Bt&
+          redirect_uri=https%3A%2F%2Fdecentphotos.example%2Fcallback&
+          client_id=https%3A%2F%2Fdecentphotos.example%2Fwebid%23this
+         */
+
         DebugOut("Get Token: Request started...");
 
         var response = await client.RequestAuthorizationCodeTokenAsync(new AuthorizationCodeTokenRequest
