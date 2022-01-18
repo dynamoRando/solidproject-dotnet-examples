@@ -87,7 +87,7 @@
         // after the user logs in, the IdP (the Community Solid Server)
         // will redirect the user back to this page
         // with an app code in the Query String that we should parse out
-        // this is handled by OnInitialized(), OnAfterRenderAsync(), and HandleLocationChanged()
+        // this is handled by OnInitialized(), HandleLocationChanged(), and finally OnAfterRenderAsync()
 
         // after that happens we need to generate a DPoP key pair
         // in order to request a token from the IdP
@@ -313,6 +313,9 @@
         // request to ask for an identity and access token to do whatever we need
         // if this succeeds, save them to storage
 
+        // https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow
+        // We are performing steps 12-14 at the above page
+         
         string codeVerifier = string.Empty;
         codeVerifier = await GetItemFromStorage(CODE_VERIFIER);
 
