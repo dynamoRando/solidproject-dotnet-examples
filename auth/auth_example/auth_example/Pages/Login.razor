@@ -315,7 +315,7 @@
 
         // https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow
         // We are performing steps 12-14 at the above page
-         
+
         string codeVerifier = string.Empty;
         codeVerifier = await GetItemFromStorage(CODE_VERIFIER);
 
@@ -373,13 +373,6 @@
         DebugOut($"Get Token: CodeVerifier {codeVerifier}");
         DebugOut($"Get Token: JWTToken {jwtToken}");
 
-        var client = new HttpClient();
-        client.DefaultRequestHeaders.Clear();
-
-        // per https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow
-        // send the token in the header
-        client.DefaultRequestHeaders.Add("DPoP", jwtToken);
-
         /*
         https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow
         Essentially, we are trying to build a POST request in Step 14
@@ -397,6 +390,13 @@
           redirect_uri=https%3A%2F%2Fdecentphotos.example%2Fcallback&
           client_id=https%3A%2F%2Fdecentphotos.example%2Fwebid%23this
          */
+
+        var client = new HttpClient();
+        client.DefaultRequestHeaders.Clear();
+
+        // per https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow
+        // send the token in the header
+        client.DefaultRequestHeaders.Add("DPoP", jwtToken);
 
         DebugOut("Get Token: Request started...");
 
@@ -441,6 +441,9 @@
 
     private string BuildJWTToken()
     {
+        // https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow
+        // We are on Steps 12 and 13
+
         if (!HasGeneratedKeys)
         {
             GenerateKeys();
