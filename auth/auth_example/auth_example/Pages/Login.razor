@@ -14,9 +14,6 @@
 @using System.Security.Cryptography
 @using System.IdentityModel.Tokens.Jwt
 @using System.Security.Claims
-@using Org.BouncyCastle.Crypto
-@using Org.BouncyCastle.Crypto.Generators
-@using Org.BouncyCastle.Security
 @inject NavigationManager navigation
 @inject ProtectedLocalStorage BrowserStorage
 
@@ -51,6 +48,22 @@
     RSAParameters PublicKey;
     RSAParameters PrivateKey;
 
+    // browser storage constants
+    const string CLIENT_ID = "clientid";
+    const string SECRET = "secret";
+    const string APP_CODE = "appcode";
+    const string CODE_VERIFIER = "codeverifier";
+    const string ACCESS_TOKEN = "access_token";
+    const string ID_TOKEN = "id_token";
+
+    // write to debug/console
+    static bool useDebug = true;
+
+    /// <summary>
+    /// Attempts to register our app with CSS (Community Solid Server), logs the user in, and saves the
+    /// authentication tokens to storage.
+    /// </summary>
+    /// <returns></returns>
     private async Task LoginToSolid()
     {
         // first, register ourself to the Identity Provider (IdP)
@@ -71,7 +84,7 @@
         // and send the user to it
         navigation.NavigateTo(url);
 
-        // after the user logs in, the IdP (the Solid Community Server)
+        // after the user logs in, the IdP (the Community Solid Server)
         // will redirect the user back to this page
         // with an app code in the Query String that we should parse out
         // this is handled by OnInitialized(), OnAfterRenderAsync(), and HandleLocationChanged()
@@ -82,6 +95,10 @@
         // if that succeeds, we will have tokens we can use to access the user's pod.
     }
 
+    /// <summary>
+    /// Registers our app with the Community Solid Server through a manual HTTP post and saves the result to storage.
+    /// </summary>
+    /// <returns></returns>
     private async Task RegisterAppWithDynamicClientRegistration()
     {
         // for information on Dynamic Client Registration, see
@@ -109,13 +126,13 @@
         */
 
         string content = @"
-        {
-           ""application_type"": ""web"",
-           ""redirect_uris"":
-           [""https://localhost:7030/login""],
-           ""client_name"": ""BlazorExample""
-        }
-        ";
+    {
+       ""application_type"": ""web"",
+       ""redirect_uris"":
+       [""https://localhost:7030/login""],
+       ""client_name"": ""BlazorExample""
+    }
+    ";
 
         var stringContent = new StringContent(content, Encoding.UTF8, "application/json");
         var result = await client.PostAsync(url, stringContent);
@@ -129,11 +146,16 @@
         // save the values returned to us to local browser storage
         if (item is not null)
         {
-            await SaveClientIdToStorage(item.client_id);
-            await SaveSecretToStorage(item.client_secret);
+            await SaveItemToStorage(CLIENT_ID, item.client_id);
+            await SaveItemToStorage(SECRET, item.client_secret);
         }
     }
 
+    /// <summary>
+    /// Attempts to leverage Dynamic Client registration using IdentityModel.Oidc. This method does not work.
+    /// </summary>
+    /// <returns></returns>
+    /// <exception cref="Exception"></exception>
     private async Task RegisterApp()
     {
         // this method does not work
@@ -153,16 +175,19 @@
 
         if (response.IsError) throw new Exception(response.Error);
 
-        Debug.WriteLine(response.Json);
-        Console.WriteLine(response.Json);
+        DebugOut(response.Json.ToString());
 
         var clientId = response.ClientId;
         var secret = response.ClientSecret;
 
-        await SaveClientIdToStorage(clientId);
-        await SaveSecretToStorage(secret);
+        await SaveItemToStorage(CLIENT_ID, clientId);
+        await SaveItemToStorage(SECRET, secret);
     }
 
+    /// <summary>
+    /// Generates the Login Url at Community Solid Server. We will send the user here to login.
+    /// </summary>
+    /// <returns></returns>
     private async Task<string> GetLoginUrl()
     {
         // we need to get to the login page of the identity provider
@@ -171,10 +196,9 @@
         // and in the case of the community server, can be found by inspecting
         // https://<identityprovider>/.well-known/openid-configuration
 
-        var clientId = await GetClientIdFromStorage();
+        var clientId = await GetItemFromStorage(CLIENT_ID);
 
-        Debug.WriteLine(clientId);
-        Console.WriteLine(clientId);
+        DebugOut(clientId);
 
         string redirect = navigation.BaseUri + "login";
 
@@ -202,58 +226,15 @@
         // IdentityMode.OdicClient generates a code challenge and verifier for us
         // this is step 4 of here https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow
         // we will need the Code Verifier later, so let's save it
-        await SaveCodeVerifierToStorage(state.CodeVerifier);
+        await SaveItemToStorage(CODE_VERIFIER, state.CodeVerifier);
 
         url += "&prompt=consent&response_mode=query";
 
-        Debug.WriteLine(url);
-        Console.WriteLine(url);
+        DebugOut(url);
 
         return url;
     }
 
-
-    /// <summary>
-    /// Saves the specified client id to browser storage
-    /// </summary>
-    /// <param name="clientId"></param>
-    /// <returns></returns>
-    private async Task SaveClientIdToStorage(string clientId)
-    {
-        await BrowserStorage.SetAsync("clientId", clientId);
-    }
-
-    /// <summary>
-    /// Saves the specified secret to browser storage
-    /// </summary>
-    /// <param name="secret"></param>
-    /// <returns></returns>
-    private async Task SaveSecretToStorage(string secret)
-    {
-        await BrowserStorage.SetAsync("secret", secret);
-    }
-
-    private async Task<string?> GetSecretFromStorage()
-    {
-        string? item;
-
-        var result = await BrowserStorage.GetAsync<string>("secret");
-        item = result.Success ? result.Value : "";
-        return item;
-    }
-
-    /// <summary>
-    /// Returns the client id from storage, or if not set, empty string
-    /// </summary>
-    /// <returns></returns>
-    private async Task<string?> GetClientIdFromStorage()
-    {
-        string? clientId;
-
-        var result = await BrowserStorage.GetAsync<string>("clientId");
-        clientId = result.Success ? result.Value : "";
-        return clientId;
-    }
 
     protected async override void OnInitialized()
     {
@@ -277,9 +258,11 @@
             {
                 // if we have an auth/app code parsed from a query string
                 // that was sent from the IdP, save it to storage
-                Console.WriteLine("Save AppCode: " + appCode);
-                Debug.WriteLine("Save AppCode: " + appCode);
-                await SaveAppCodeToStorage(appCode);
+                DebugOut("Save AppCode: " + appCode);
+                await SaveItemToStorage(APP_CODE, appCode);
+
+                // once we have our app code, we want to get access/id tokens so we can do stuff
+                // at the Community Solid Server
                 await GetAccessAndIdTokens();
             }
 
@@ -301,8 +284,7 @@
 
         if (!string.IsNullOrEmpty(appCode))
         {
-            Console.WriteLine("AppCode: " + appCode);
-            Debug.WriteLine("AppCode: " + appCode);
+            DebugOut("AppCode: " + appCode);
         }
     }
 
@@ -311,37 +293,32 @@
         navigation.LocationChanged -= HandleLocationChanged;
     }
 
-    private async Task SaveAppCodeToStorage(string appCode)
+    private async Task SaveItemToStorage(string key, string item)
     {
-        await BrowserStorage.SetAsync("appCode", appCode);
+        await BrowserStorage.SetAsync(key, item);
     }
 
-    private async Task SaveCodeVerifierToStorage(string codeVerifier)
+    private async Task<string?> GetItemFromStorage(string key)
     {
-        await BrowserStorage.SetAsync("codeVerifier", codeVerifier);
-    }
+        string? item;
 
-    private async Task<string?> GetCodeVerifierFromStorage()
-    {
-        string? codeVerifier;
-
-        var result = await BrowserStorage.GetAsync<string>("codeVerifier");
-        codeVerifier = result.Success ? result.Value : "";
-        return codeVerifier;
+        var result = await BrowserStorage.GetAsync<string>(key);
+        item = result.Success ? result.Value : "";
+        return item;
     }
 
     private async Task GetAccessAndIdTokens()
     {
-        // we're going to build a DPoP token and POST 
+        // we're going to build a DPoP token and POST
         // request to ask for an identity and access token to do whatever we need
         // if this succeeds, save them to storage
 
         string codeVerifier = string.Empty;
-        codeVerifier = await GetCodeVerifierFromStorage();
-       
+        codeVerifier = await GetItemFromStorage(CODE_VERIFIER);
+
         string url = identityProvider + "/idp/token";
-        string clientId = await GetClientIdFromStorage();
-        string clientSecret = await GetSecretFromStorage();
+        string clientId = await GetItemFromStorage(CLIENT_ID);
+        string clientSecret = await GetItemFromStorage(SECRET);
 
         // for this request, we need to send a DPoP token, which itself is a Json Web Token (JWT)
         // so let's make one
@@ -383,15 +360,15 @@
 
         if (tokenHandler.CanReadToken(jwtToken))
         {
-            Console.WriteLine("Get Token: Token Is Valid");
+            DebugOut("Get Token: Token Is Valid");
         }
 
-        Console.WriteLine($"Get Token: Address {url}");
-        Console.WriteLine($"Get Token: ClientId {clientId}");
-        Console.WriteLine($"Get Token: Secret {clientSecret}");
-        Console.WriteLine($"Get Token: AppCode {appCode}");
-        Console.WriteLine($"Get Token: CodeVerifier {codeVerifier}");
-        Console.WriteLine($"Get Token: JWTToken {jwtToken}");
+        DebugOut($"Get Token: Address {url}");
+        DebugOut($"Get Token: ClientId {clientId}");
+        DebugOut($"Get Token: Secret {clientSecret}");
+        DebugOut($"Get Token: AppCode {appCode}");
+        DebugOut($"Get Token: CodeVerifier {codeVerifier}");
+        DebugOut($"Get Token: JWTToken {jwtToken}");
 
         var client = new HttpClient();
         client.DefaultRequestHeaders.Clear();
@@ -400,7 +377,7 @@
         // send the token in the header
         client.DefaultRequestHeaders.Add("DPoP", jwtToken);
 
-        Console.WriteLine("Get Token: Request started...");
+        DebugOut("Get Token: Request started...");
 
         var response = await client.RequestAuthorizationCodeTokenAsync(new AuthorizationCodeTokenRequest
             {
@@ -420,7 +397,7 @@
                 ClientCredentialStyle = ClientCredentialStyle.PostBody
             });
 
-        Console.WriteLine("Token Response:" + response.HttpStatusCode.ToString());
+        DebugOut("Token Response:" + response.HttpStatusCode.ToString());
 
         if (response.HttpStatusCode == HttpStatusCode.OK)
         {
@@ -430,10 +407,10 @@
             var jwt_id = new JwtSecurityToken(id_token);
             var jwt_access = new JwtSecurityToken(access_token);
 
-            await SaveIdTokenToStorage(id_token);
-            await SaveAccessTokenToStorage(access_token);
+            await SaveItemToStorage(ID_TOKEN, id_token);
+            await SaveItemToStorage(ACCESS_TOKEN, access_token);
 
-            Console.WriteLine("Get Token: Tokens Saved To Storage");
+            DebugOut("Get Token: Tokens Saved To Storage");
         }
         else
         {
@@ -568,14 +545,17 @@
         return new RsaSecurityKey(parameter);
     }
 
-    private async Task SaveAccessTokenToStorage(string access)
+    /// <summary>
+    /// Write item to console/debug if configured to do so
+    /// </summary>
+    /// <param name="item"></param>
+    private static void DebugOut(string item)
     {
-        await BrowserStorage.SetAsync("access_token", access);
-    }
-
-    private async Task SaveIdTokenToStorage(string id)
-    {
-        await BrowserStorage.SetAsync("id_token", id);
+        if (useDebug)
+        {
+            Console.WriteLine(item);
+            Debug.WriteLine(item);
+        }
     }
 
 }

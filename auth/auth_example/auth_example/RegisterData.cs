@@ -1,5 +1,8 @@
 ﻿namespace auth_example
 {
+    /// <summary>
+    /// A generated class representing the Json sent back from the Identity Provider after dynamic client registration
+    /// </summary>
     public class RegisterData
     {
 
