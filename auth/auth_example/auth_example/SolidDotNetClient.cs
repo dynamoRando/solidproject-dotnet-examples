@@ -55,6 +55,12 @@ namespace SolidDotNet
         #endregion
 
         #region Public Methods
+        public async Task GetAccessAndIdTokens(string appCode, string issuerUrl, string audienceUrl, string authorizationUrl)
+        {
+            _clientAppCode = appCode;
+            await GetAccessAndIdTokens(issuerUrl, audienceUrl, authorizationUrl);
+        }
+
         public async Task GetAccessAndIdTokens(string issuerUrl, string audienceUrl, string authorizationUrl)
         {
             string url = _identityProviderUrl + "/idp/token";
@@ -163,6 +169,12 @@ namespace SolidDotNet
             url += "&prompt=consent&response_mode=query";
 
             return url;
+        }
+
+        public async Task RegisterAppAsync(string identityProvider, string[] redirectUris, string appName)
+        {
+            _identityProviderUrl = identityProvider;
+            await RegisterAppAsync(redirectUris, appName);
         }
 
         public async Task RegisterAppAsync(string[] redirectUris, string appName)

@@ -14,9 +14,8 @@
 
     private async Task LoginToSolid()
     {
-        client.SetIdentityProvider(identityProvider);
         string[] redirectUris = new string[1] { "https://localhost:7030/loginclient" };
-        await client.RegisterAppAsync(redirectUris, appName);
+        await client.RegisterAppAsync(identityProvider, redirectUris, appName);
 
         var url = await client.GetLoginUrl(redirectUris.First());
         navigation.NavigateTo(url);
