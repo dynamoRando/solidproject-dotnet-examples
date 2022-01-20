@@ -27,6 +27,7 @@ namespace SolidDotNet
         private static string _appScopes = "openid offline_access webid";
         private static bool _useDebug = true;
         private static string[] _redirectUris;
+        private static EndpointInfo _endpointInfo;
 
         // private values
         private static string _clientId;
@@ -55,15 +56,15 @@ namespace SolidDotNet
         #endregion
 
         #region Public Methods
-        public async Task GetAccessAndIdTokens(string appCode, string issuerUrl, string audienceUrl, string authorizationUrl)
+        public async Task GetAccessAndIdTokensAsync(string appCode, string issuerUrl, string audienceUrl, string authorizationUrl)
         {
             _clientAppCode = appCode;
-            await GetAccessAndIdTokens(issuerUrl, audienceUrl, authorizationUrl);
+            await GetAccessAndIdTokensAsync(issuerUrl, audienceUrl, authorizationUrl);
         }
 
-        public async Task GetAccessAndIdTokens(string issuerUrl, string audienceUrl, string authorizationUrl)
+        public async Task GetAccessAndIdTokensAsync(string issuerUrl, string audienceUrl, string authorizationUrl)
         {
-            string url = _identityProviderUrl + "/idp/token";
+            string url = _endpointInfo.token_endpoint;
             string jwtToken = BuildJwt(issuerUrl, audienceUrl, authorizationUrl);
             var tokenHandler = new JwtSecurityTokenHandler();
 
@@ -107,7 +108,7 @@ namespace SolidDotNet
             var response = await client.RequestAuthorizationCodeTokenAsync(new AuthorizationCodeTokenRequest
             {
                 // TO DO: This should be looked up, rather than manually built
-                Address = _identityProviderUrl + "/idp/token",
+                Address = _endpointInfo.token_endpoint,
                 ClientId = _clientId,
                 ClientSecret = _clientSecret,
                 Code = _clientAppCode,
@@ -138,7 +139,7 @@ namespace SolidDotNet
             }
         }
 
-        public async Task<string> GetLoginUrl(string redirectUrl)
+        public async Task<string> GetLoginUrlAsync(string redirectUrl)
         {
             // https://identitymodel.readthedocs.io/en/latest/native/manual.html?highlight=OidcClientOptions
             var options = new OidcClientOptions
@@ -174,6 +175,7 @@ namespace SolidDotNet
         public async Task RegisterAppAsync(string identityProvider, string[] redirectUris, string appName)
         {
             _identityProviderUrl = identityProvider;
+            await GetConfigurationAsync();
             await RegisterAppAsync(redirectUris, appName);
         }
 
@@ -186,8 +188,7 @@ namespace SolidDotNet
 
             _redirectUris = redirectUris;
 
-            // TO DO: This should be looked up, rather than manually built
-            string url = _identityProviderUrl + "/idp/reg";
+            string url = _endpointInfo.registration_endpoint;
 
             _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
@@ -227,9 +228,10 @@ namespace SolidDotNet
             }
         }
 
-        public void SetIdentityProvider(string identityProvider)
+        public async Task SetIdentityProviderAsync(string identityProvider)
         {
             _identityProviderUrl = identityProvider;
+            await GetConfigurationAsync();
         }
 
         public void SetAppName(string appName)
@@ -357,6 +359,23 @@ namespace SolidDotNet
             {
                 Console.WriteLine(item);
                 Debug.WriteLine(item);
+            }
+        }
+
+        private async Task GetConfigurationAsync()
+        {
+            if (!string.IsNullOrEmpty(_identityProviderUrl))
+            {
+                if (_client is not null)
+                {
+                    var response = _client.GetAsync(_identityProviderUrl + "/.well-known/openid-configuration");
+                    var data = await response.Result.Content.ReadAsStringAsync();
+                    var item = JsonConvert.DeserializeObject<EndpointInfo>(data);
+                    if (item is not null)
+                    {
+                        _endpointInfo = item;
+                    }
+                }
             }
         }
         #endregion

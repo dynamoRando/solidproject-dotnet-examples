@@ -17,7 +17,7 @@
         string[] redirectUris = new string[1] { "https://localhost:7030/loginclient" };
         await client.RegisterAppAsync(identityProvider, redirectUris, appName);
 
-        var url = await client.GetLoginUrl(redirectUris.First());
+        var url = await client.GetLoginUrlAsync(redirectUris.First());
         navigation.NavigateTo(url);
     }
 
@@ -47,7 +47,7 @@
             if (!string.IsNullOrEmpty(client.AppCode))
             {
                 string audienceAndIssuerUrl = navigation.BaseUri + "loginclient";
-                await client.GetAccessAndIdTokens(audienceAndIssuerUrl, audienceAndIssuerUrl, identityProvider + "/idp/token");
+                await client.GetAccessAndIdTokensAsync(audienceAndIssuerUrl, audienceAndIssuerUrl, identityProvider + "/idp/token");
             }
 
             StateHasChanged();
