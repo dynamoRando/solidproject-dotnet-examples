@@ -1,16 +1,45 @@
 ﻿@page "/loginclient"
 @using SolidDotNet
+@using System.Diagnostics
+@using System.Text
+@using VDS.RDF
+@using VDS.RDF.Parsing
 @inject SolidDotNet.SolidClient client
 @inject NavigationManager navigation
 <h3>LoginWithClient</h3>
 
+<p>
+    <button class="btn btn-primary" @onclick="LoginToSolid">Login To Solid Community Server</button>
+</p>
 
-<button class="btn btn-primary" @onclick="LoginToSolid">Login To Solid Community Server</button>
+
+<p>
+    <button class="btn btn-primary" @onclick="GetCardInformation">Get Card Information</button>
+</p>
+
+<p>
+    <label>
+        CurrentName:
+        <input value="@currentName"
+               @onchange="@((ChangeEventArgs __e) => currentName = __e?.Value?.ToString())" />
+    </label>
+</p>
+
+
+<p>
+    <button class="btn btn-primary" @onclick="SetNameAsync">Save New Name</button>
+</p>
 
 @code {
 
     string identityProvider = "http://localhost:3000";
     string appName = "BlazorExampleClient";
+
+    static string cardUrl = "http://localhost:3000/profile/card#me";
+    static string cardUrlNoAnchor = "http://localhost:3000/profile/card";
+    string oldName = string.Empty;
+    string currentName = string.Empty;
+    bool useDebug = true;
 
     private async Task LoginToSolid()
     {
@@ -46,11 +75,102 @@
         {
             if (!string.IsNullOrEmpty(client.AppCode))
             {
-                string audienceAndIssuerUrl = navigation.BaseUri + "userinfo";
+                string audienceAndIssuerUrl = navigation.BaseUri + "loginclient";
                 await client.GetAccessAndIdTokensAsync(audienceAndIssuerUrl, audienceAndIssuerUrl);
             }
 
             StateHasChanged();
+        }
+    }
+
+    private void GetCardInformation()
+    {
+        //await GetCardManuallyAsync();
+        GetCardWithRdf();
+    }
+
+    private async Task GetCardManuallyAsync()
+    {
+        var client = new HttpClient();
+        var result = await client.GetAsync(cardUrl);
+        var data = await result.Content.ReadAsStringAsync();
+    }
+
+    private void GetCardWithRdf()
+    {
+        IGraph g = new Graph();
+        UriLoader.Load(g, new Uri(cardUrl));
+
+        var triples = g.Triples;
+        foreach (var triple in triples)
+        {
+            if (triple.Predicate.NodeType == NodeType.Uri)
+            {
+                var uriNode = triple.Predicate as UriNode;
+                if (uriNode.Uri.Fragment.Contains("#fn"))
+                {
+                    if (triple.Object.NodeType == NodeType.Literal)
+                    {
+                        var literal = triple.Object as ILiteralNode;
+                        currentName = literal.Value;
+                        oldName = currentName;
+                    }
+                }
+            }
+        }
+    }
+
+
+    private async Task SetNameAsync()
+    {
+        using (var httpClient = new HttpClient())
+        {
+            string authToken = string.Empty;
+            authToken = client.Access_Token;
+
+            string customDPoP = string.Empty;
+            customDPoP = client.BuildJwtForContent("PATCH", cardUrlNoAnchor);
+
+            httpClient.DefaultRequestHeaders.Clear();
+            httpClient.DefaultRequestHeaders.Add("authorization", "DPoP " + authToken);
+            httpClient.DefaultRequestHeaders.Add("dpop", customDPoP);
+            httpClient.DefaultRequestHeaders.Add("Referer",  navigation.BaseUri + "loginclient");
+            httpClient.DefaultRequestHeaders.Add("Origin",  navigation.BaseUri + "loginclient");
+
+
+            var contentBuilder = new StringBuilder();
+            contentBuilder.Append($@"DELETE DATA {{<{cardUrl}> <http://www.w3.org/2006/vcard/ns#fn> ""{oldName}"".}}; ");
+            contentBuilder.Append($@"INSERT DATA {{<{cardUrl}> <http://www.w3.org/2006/vcard/ns#fn> ""{currentName}"".}}; ");
+            var stringContent = new StringContent(contentBuilder.ToString(), Encoding.UTF8, "application/sparql-update");
+            var request = new HttpRequestMessage(new HttpMethod("PATCH"), cardUrl);
+            request.Content = stringContent;
+            request.Headers.Add("authorization", "DPoP " +  authToken);
+            request.Headers.Add("dpop", customDPoP);
+            request.Headers.Add("Referer",  navigation.BaseUri + "loginclient");
+            request.Headers.Add("Origin",  navigation.BaseUri + "loginclient");
+
+            DebugOut(request.ToString());
+            DebugOut(contentBuilder.ToString());
+
+            try
+            {
+                var response = await httpClient.SendAsync(request);
+                DebugOut(response.StatusCode.ToString());
+
+            }
+            catch (HttpRequestException ex)
+            {
+                DebugOut(ex.ToString());
+            }
+        }
+    }
+
+    private void DebugOut(string item)
+    {
+        if (useDebug)
+        {
+            Console.WriteLine(item);
+            Debug.WriteLine(item);
         }
     }
 
