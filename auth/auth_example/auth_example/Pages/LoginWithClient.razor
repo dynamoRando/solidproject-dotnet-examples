@@ -46,8 +46,8 @@
         {
             if (!string.IsNullOrEmpty(client.AppCode))
             {
-                string audienceAndIssuerUrl = navigation.BaseUri + "loginclient";
-                await client.GetAccessAndIdTokensAsync(audienceAndIssuerUrl, audienceAndIssuerUrl, identityProvider + "/idp/token");
+                string audienceAndIssuerUrl = navigation.BaseUri + "userinfo";
+                await client.GetAccessAndIdTokensAsync(audienceAndIssuerUrl, audienceAndIssuerUrl);
             }
 
             StateHasChanged();

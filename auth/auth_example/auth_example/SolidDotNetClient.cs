@@ -42,6 +42,9 @@ namespace SolidDotNet
         public bool HasGeneratedKeys => _hasGeneratedKeys;
         public string IdentityProviderUrl => _identityProviderUrl;
         public string AppCode => _clientAppCode;
+        public bool UseDebug => _useDebug;
+        public string Access_Token => _clientAccessToken;
+        public string Client_Token = _clientIdToken;
         #endregion
 
         #region Constructors
@@ -56,16 +59,21 @@ namespace SolidDotNet
         #endregion
 
         #region Public Methods
-        public async Task GetAccessAndIdTokensAsync(string appCode, string issuerUrl, string audienceUrl, string authorizationUrl)
+        public void SetDebug(bool useDebug)
         {
-            _clientAppCode = appCode;
-            await GetAccessAndIdTokensAsync(issuerUrl, audienceUrl, authorizationUrl);
+            _useDebug = useDebug;
         }
 
-        public async Task GetAccessAndIdTokensAsync(string issuerUrl, string audienceUrl, string authorizationUrl)
+        public async Task GetAccessAndIdTokensAsync(string appCode, string issuerUrl, string audienceUrl)
+        {
+            _clientAppCode = appCode;
+            await GetAccessAndIdTokensAsync(issuerUrl, audienceUrl);
+        }
+
+        public async Task GetAccessAndIdTokensAsync(string issuerUrl, string audienceUrl)
         {
             string url = _endpointInfo.token_endpoint;
-            string jwtToken = BuildJwt(issuerUrl, audienceUrl, authorizationUrl);
+            string jwtToken = BuildJwtForLogin(issuerUrl, audienceUrl, _endpointInfo.token_endpoint);
             var tokenHandler = new JwtSecurityTokenHandler();
 
             var validationParameters = new TokenValidationParameters
@@ -213,7 +221,8 @@ namespace SolidDotNet
                 }
             }
             contentBuilder.Append("],");
-            contentBuilder.Append($@"""client_name"": ""{appName}""");
+            contentBuilder.Append($@"""client_name"": ""{appName}"",");
+            contentBuilder.Append($@"""scopes"": ""{_appScopes}""");
             contentBuilder.Append("}");
 
             var stringContent = new StringContent(contentBuilder.ToString(), Encoding.UTF8, "application/json");
@@ -277,7 +286,7 @@ namespace SolidDotNet
             return JsonWebKeyConverter.ConvertFromRSASecurityKey(_publicRSAKey);
         }
 
-        public string BuildJwt(string issuerUrl, string audienceUrl, string authorizationUrl)
+        public string BuildJwtForContent(string httpMethod, string resourceUri)
         {
             if (!HasGeneratedKeys)
             {
@@ -289,7 +298,65 @@ namespace SolidDotNet
             var issueTime = DateTime.UtcNow;
 
             var iat = (int)issueTime.Subtract(utc0).TotalSeconds;
-            var exp = (int)issueTime.AddMinutes(55).Subtract(utc0).TotalSeconds;
+            //var exp = (int)issueTime.AddMinutes(55).Subtract(utc0).TotalSeconds;
+
+            // a secret key that we know
+            var key = new RsaSecurityKey(_privateKey);
+
+            // how this token is generated
+            var creds = new SigningCredentials(key, SecurityAlgorithms.RsaSha256);
+
+            // identify the type of crypto for our keys
+            var algMap = new Dictionary<string, string>();
+            algMap.Add("alg", "RS256");
+
+            // https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow
+            // per the above, we need to send as "dpop+jwt"
+            var header = new JwtHeader(creds, algMap, "dpop+jwt");
+
+            // per the above link, send the public key in the header
+            var jwk = GetPublicJsonWebKey();
+            header.Add("jwk", jwk);
+
+            // add the inital claims
+            var payload = new JwtPayload(new List<Claim>());
+
+            // we want to only use this token at the Community Solid server
+            payload.AddClaim(new Claim("htu", resourceUri));
+
+            // only on post methods
+            payload.AddClaim(new Claim("htm", httpMethod));
+
+            // unique identifier for the token
+            payload.AddClaim(new Claim("jti", Guid.NewGuid().ToString()));
+
+            // we rebuild the token with all the additional headers, claims, etc.
+            var dpopToken = new JwtSecurityToken(header, payload);
+
+            // the date when the token was issued, must be an integer (not a string)
+            // this is required
+            dpopToken.Payload.AddClaim(new Claim("iat", iat.ToString(), ClaimValueTypes.Integer));
+
+            // debugging
+            var text = new JwtSecurityTokenHandler().WriteToken(dpopToken);
+
+            // we can validate the text at https://jwt.io/ if we want
+            return text;
+        }
+
+        public string BuildJwtForLogin(string issuerUrl, string audienceUrl, string authorizationUrl)
+        {
+            if (!HasGeneratedKeys)
+            {
+                GenerateKeys();
+            }
+
+            // stolen from the internet to compute iat, exp values
+            var utc0 = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+            var issueTime = DateTime.UtcNow;
+
+            var iat = (int)issueTime.Subtract(utc0).TotalSeconds;
+            //var exp = (int)issueTime.AddMinutes(55).Subtract(utc0).TotalSeconds;
 
             // a secret key that we know
             var key = new RsaSecurityKey(_privateKey);

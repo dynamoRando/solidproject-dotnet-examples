@@ -5,7 +5,6 @@
     /// </summary>
     public class RegisterData
     {
-
         public string application_type { get; set; }
         public IList<string> grant_types { get; set; }
         public string id_token_signed_response_alg { get; set; }
@@ -29,6 +28,9 @@
 
     }
 
+    /// <summary>
+    /// A generated class representing the data at a "/.well-known/openid-configuration" URL
+    /// </summary>
     public class EndpointInfo
     {
         public string authorization_endpoint { get; set; }
