@@ -20,7 +20,21 @@
 
 <h3>Login</h3>
 
-<button class="btn btn-primary" @onclick="LoginToSolid">Login To Solid Community Server</button>
+<p>This page was created to understand the login process for Commuity Solid Server. Almost all the code to do so lives in this page. Before starting, be sure
+    to complete the setup of the Community Solid Server, usually at <a href="http://localhost:3000/setup">http://localhost:3000/setup</a>. This demo was tested
+    against Community Solid Server v2.0.1, running in in-memory mode only.
+</p>
+
+<p>A quick overview of the process when you click "Login To Community Solid Server":</p>
+
+<ul>
+    <li>We leverage Dynamic Client Registration to identify ourselves to the Community Solid Server. This concept is supported by OpenId.</li>
+    <li>We generate a login url and send the user to it. The user is expected to login and will be re-directed to this page.</li>
+</ul>
+
+<p>You can look at the Console for any debug information that may be helpful.</p>
+
+<button class="btn btn-primary" @onclick="LoginToSolid">Login To Community Solid Server</button>
 
 @code {
 

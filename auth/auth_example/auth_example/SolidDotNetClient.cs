@@ -76,6 +76,7 @@ namespace SolidDotNet
             string jwtToken = BuildJwtForLogin(issuerUrl, audienceUrl, _endpointInfo.token_endpoint);
             var tokenHandler = new JwtSecurityTokenHandler();
 
+            // we don't actually need to do this, this is just a sanity check
             var validationParameters = new TokenValidationParameters
             {
                 ClockSkew = TimeSpan.FromMinutes(5),
@@ -292,6 +293,13 @@ namespace SolidDotNet
             return key;
         }
 
+        /// <summary>
+        /// Builds a JWT (Json Web Token) with our generated RSA public key in the header, signed by our private key
+        /// for the action/content we need
+        /// </summary>
+        /// <param name="httpMethod">The HTTP method we are using the token for</param>
+        /// <param name="resourceUri">The resource we are accessing</param>
+        /// <returns>A JWT for the action/object we need</returns>
         public string BuildJwtForContent(string httpMethod, string resourceUri)
         {
             if (!HasGeneratedKeys)
@@ -318,10 +326,13 @@ namespace SolidDotNet
 
             // https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow
             // per the above, we need to send as "dpop+jwt"
-            //var header = new JwtHeader(creds, algMap, "dpop+jwt");
+            // we'll add this in later, but for now, add our signing creds
             var header = new JwtHeader(creds);
-            header.Remove("typ");
 
+            // Microsoft's API automatically adds this as "jwt",
+            // but we need to set it to "dpop+jwt",
+            // so let's remove it and add it back later
+            header.Remove("typ");
 
             // per the above link, send the public key in the header
             var jwk = GetPublicJsonWebKey();
@@ -331,10 +342,10 @@ namespace SolidDotNet
             // add the inital claims
             var payload = new JwtPayload(new List<Claim>());
 
-            // we want to only use this token at the Community Solid server
+            // we want to only use this token at the specified location
             payload.AddClaim(new Claim("htu", resourceUri));
 
-            // only on post methods
+            // for the specific method
             payload.AddClaim(new Claim("htm", httpMethod));
 
             // unique identifier for the token
@@ -353,6 +364,14 @@ namespace SolidDotNet
             return text;
         }
 
+        /// <summary>
+        /// Builds a JWT (Json Web Token) signed with our generated RSA keys to authenticate ourselves to our IdP
+        /// </summary>
+        /// <param name="issuerUrl">The issuer of this token (usually ourselves, i.e. 'http://localhost:7030')</param>
+        /// <param name="audienceUrl">Who this token is for (usually ourselves, i.e. 'http://localhost:7030')</param>
+        /// <param name="authorizationUrl">Who is approving this token (usually the IdP, 
+        /// in this case, Community Solid Server at 'http://localhost:3000')</param>
+        /// <returns>A JWT for the specified parameters</returns>
         public string BuildJwtForLogin(string issuerUrl, string audienceUrl, string authorizationUrl)
         {
             if (!HasGeneratedKeys)

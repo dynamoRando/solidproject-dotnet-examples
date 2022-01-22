@@ -9,6 +9,21 @@
 @inject NavigationManager navigation
 <h3>LoginWithClient</h3>
 
+<p>This page behaves mostly the same as the Login page, except that we've moved most of the heavy lifting into a seperate SolidDotNetClient.cs object.</p>
+<p>For this demo, first click the "Login To Solid Community Server" button. This will redirect you to the Community Solid Server at the "identityProvider"
+    variable. That function will use Dynamic Registration to identify this app to the Community Solid Server, then attempt to log us in and redirect back
+    to this page.
+</p>
+
+<p>Once you've logged in, you can click the "Get Card Information" to try and read what's currently set in your WebID on the server. This may return
+    nothing if you've just started up the Community Server.
+</p>
+
+<p>Finally, you can type something for a name and click "Save New Name" which will attempt to update your WebId at <a href="http://localhost:3000/profile/card#me">
+    http://localhost:3000/profile/card#me</a>. If that is successful, you can navigate to that location and download the file and open it in the text editor of your choice to verify that your new name
+    has been saved correctly, or alternatively you may click "Get Card Information" to try and read your new name again.
+</p>
+
 <p>
     <button class="btn btn-primary" @onclick="LoginToSolid">Login To Solid Community Server</button>
 </p>
@@ -42,11 +57,19 @@
     string currentName = string.Empty;
     bool useDebug = true;
 
+    /// <summary>
+    /// Logs the user in at the Solid Community Server
+    /// </summary>
+    /// <returns></returns>
     private async Task LoginToSolid()
     {
+        // instruct the Solid Server to send us back to this page when registration is done
         string[] redirectUris = new string[1] { "https://localhost:7030/loginclient" };
+
+        // before we login, we need to use Dynamic Client Registration to identify ourselves to the Solid Server
         await client.RegisterAppAsync(identityProvider, redirectUris, appName);
 
+        // generate the login url and save values as needed, sending us back to this page when we're done logging in
         var url = await client.GetLoginUrlAsync(redirectUris.First());
         navigation.NavigateTo(url);
     }
@@ -59,6 +82,8 @@
 
     void GetQueryStringValues()
     {
+        // when we're redirected back from the Solid Server after the user logs in, we're given an app code from login that we need to get tokens
+        // so let's save that
         string appCode;
         navigation.TryGetQueryString<string>("code", out appCode);
         client.SetAppCode(appCode);
@@ -76,6 +101,8 @@
         {
             if (!string.IsNullOrEmpty(client.AppCode))
             {
+                // if we have the app code from login, try and get our id and access tokens
+                // to be used to authorize ourselves to do actions (in this case, set our first name in our card)
                 string audienceAndIssuerUrl = navigation.BaseUri + "loginclient";
                 await client.GetAccessAndIdTokensAsync(audienceAndIssuerUrl, audienceAndIssuerUrl);
             }
@@ -90,6 +117,10 @@
         GetCardWithRdf();
     }
 
+    /// <summary>
+    /// Not fully implemented. Manually read the contents of the RDF document at the Card Uri for the first name.
+    /// </summary>
+    /// <returns></returns>
     private async Task GetCardManuallyAsync()
     {
         var client = new HttpClient();
@@ -97,6 +128,9 @@
         var data = await result.Content.ReadAsStringAsync();
     }
 
+    /// <summary>
+    /// Parses the Card Uri with the dotNetRDF library to get the first name from the card.
+    /// </summary>
     private void GetCardWithRdf()
     {
         IGraph g = new Graph();
@@ -121,42 +155,53 @@
         }
     }
 
-
+    /// <summary>
+    /// Sets the name at the Community Solid Server. This will only work if you've logged in first.
+    /// </summary>
+    /// <returns></returns>
     private async Task SetNameAsync()
     {
         using (var httpClient = new HttpClient())
         {
+            // get our token from earlier when we logged in
             string authToken = string.Empty;
             authToken = client.Access_Token;
 
+            // build a JWT for the content we're going to modify (HTTP PATCH to modify, URL is our profile card)
             string customDPoP = string.Empty;
             customDPoP = client.BuildJwtForContent("PATCH", cardUrlNoAnchor);
-
             string dpopLine = "DPoP " + authToken;
 
             httpClient.DefaultRequestHeaders.Clear();
-            //httpClient.DefaultRequestHeaders.Add("authorization", dpopLine);
-            //httpClient.DefaultRequestHeaders.Add("dpop", customDPoP);
-            //httpClient.DefaultRequestHeaders.Add("Referer",  navigation.BaseUri + "loginclient");
-            //httpClient.DefaultRequestHeaders.Add("Origin",  navigation.BaseUri + "loginclient");
-
+            
             var contentBuilder = new StringBuilder();
+
+            // this is a SPARQL statement, copied from the Solid Demo (had to sniff the PATCH request with Fiddler for this)
+            // https://solidproject.org/developers/tutorials/first-app
+
+            // delete our old name, and write our new name
             contentBuilder.Append($@"DELETE DATA {{<{cardUrl}> <http://www.w3.org/2006/vcard/ns#fn> ""{oldName}"".}}; ");
             contentBuilder.Append($@"INSERT DATA {{<{cardUrl}> <http://www.w3.org/2006/vcard/ns#fn> ""{currentName}"".}}; ");
+
             var stringContent = new StringContent(contentBuilder.ToString());
             var request = new HttpRequestMessage(new HttpMethod("PATCH"), cardUrlNoAnchor);
 
+            // set our content to the our SPARQL statements
             request.Content = stringContent;
             request.Content.Headers.Clear();
+
+            // specify that this is a sparql statement
             request.Content.Headers.Add("content-type", "application/sparql-update");
             
+            // required
             request.Headers.Add("authorization", dpopLine);
-            
+            // required
             request.Headers.Add("dpop", customDPoP);
+
+            // not sure if these are required
             request.Headers.Add("Referer",  navigation.BaseUri + "loginclient");
             request.Headers.Add("Origin",  navigation.BaseUri + "loginclient");
             
-
             DebugOut(request.ToString());
             DebugOut(contentBuilder.ToString());
 
