@@ -1,4 +1,5 @@
 ﻿@page "/loginclient"
+@using Microsoft.Net.Http.Headers
 @using SolidDotNet
 @using System.Diagnostics
 @using System.Text
@@ -131,23 +132,30 @@
             string customDPoP = string.Empty;
             customDPoP = client.BuildJwtForContent("PATCH", cardUrlNoAnchor);
 
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("authorization", "DPoP " + authToken);
-            httpClient.DefaultRequestHeaders.Add("dpop", customDPoP);
-            httpClient.DefaultRequestHeaders.Add("Referer",  navigation.BaseUri + "loginclient");
-            httpClient.DefaultRequestHeaders.Add("Origin",  navigation.BaseUri + "loginclient");
+            string dpopLine = "DPoP " + authToken;
 
+            httpClient.DefaultRequestHeaders.Clear();
+            //httpClient.DefaultRequestHeaders.Add("authorization", dpopLine);
+            //httpClient.DefaultRequestHeaders.Add("dpop", customDPoP);
+            //httpClient.DefaultRequestHeaders.Add("Referer",  navigation.BaseUri + "loginclient");
+            //httpClient.DefaultRequestHeaders.Add("Origin",  navigation.BaseUri + "loginclient");
 
             var contentBuilder = new StringBuilder();
             contentBuilder.Append($@"DELETE DATA {{<{cardUrl}> <http://www.w3.org/2006/vcard/ns#fn> ""{oldName}"".}}; ");
             contentBuilder.Append($@"INSERT DATA {{<{cardUrl}> <http://www.w3.org/2006/vcard/ns#fn> ""{currentName}"".}}; ");
-            var stringContent = new StringContent(contentBuilder.ToString(), Encoding.UTF8, "application/sparql-update");
-            var request = new HttpRequestMessage(new HttpMethod("PATCH"), cardUrl);
+            var stringContent = new StringContent(contentBuilder.ToString());
+            var request = new HttpRequestMessage(new HttpMethod("PATCH"), cardUrlNoAnchor);
+
             request.Content = stringContent;
-            request.Headers.Add("authorization", "DPoP " +  authToken);
+            request.Content.Headers.Clear();
+            request.Content.Headers.Add("content-type", "application/sparql-update");
+            
+            request.Headers.Add("authorization", dpopLine);
+            
             request.Headers.Add("dpop", customDPoP);
             request.Headers.Add("Referer",  navigation.BaseUri + "loginclient");
             request.Headers.Add("Origin",  navigation.BaseUri + "loginclient");
+            
 
             DebugOut(request.ToString());
             DebugOut(contentBuilder.ToString());

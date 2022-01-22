@@ -312,11 +312,15 @@ namespace SolidDotNet
 
             // https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow
             // per the above, we need to send as "dpop+jwt"
-            var header = new JwtHeader(creds, algMap, "dpop+jwt");
+            //var header = new JwtHeader(creds, algMap, "dpop+jwt");
+            var header = new JwtHeader(creds);
+            header.Remove("typ");
+
 
             // per the above link, send the public key in the header
             var jwk = GetPublicJsonWebKey();
             header.Add("jwk", jwk);
+            header.Add("typ", "dpop+jwt");
 
             // add the inital claims
             var payload = new JwtPayload(new List<Claim>());
@@ -337,7 +341,6 @@ namespace SolidDotNet
             // this is required
             dpopToken.Payload.AddClaim(new Claim("iat", iat.ToString(), ClaimValueTypes.Integer));
 
-            // debugging
             var text = new JwtSecurityTokenHandler().WriteToken(dpopToken);
 
             // we can validate the text at https://jwt.io/ if we want
