@@ -6,3 +6,4 @@ Contains various examples of dotnet projects as I try to learn how to use [Solid
 
 # Other Referenced Projects
 * [IdentityModel.OidcClient](https://github.com/IdentityModel) - Apache 2.0
+* [DotNetRDF](https://dotnetrdf.org/) - MIT
