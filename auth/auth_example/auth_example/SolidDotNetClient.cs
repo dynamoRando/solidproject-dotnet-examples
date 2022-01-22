@@ -283,7 +283,13 @@ namespace SolidDotNet
                 GenerateKeys();
             }
 
-            return JsonWebKeyConverter.ConvertFromRSASecurityKey(_publicRSAKey);
+            var key = JsonWebKeyConverter.ConvertFromRSASecurityKey(_publicRSAKey);
+
+            // not sure why, but Solid wants the alg property...
+            // spent all day fighting this...
+            key.AdditionalData.Add("alg", "RS256");
+
+            return key;
         }
 
         public string BuildJwtForContent(string httpMethod, string resourceUri)
