@@ -2,6 +2,7 @@
 {
     public class ToDo
     {
-        public string Item { get; set; }
+        public string Summary { get; set; }
+        public bool IsCompleted { get; set; }
     }
 }
