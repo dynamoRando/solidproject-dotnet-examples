@@ -171,7 +171,7 @@ namespace SolidDotNet
 
             string url = state.StartUrl;
 
-            // IdentityMode.OdicClient generates a code challenge and verifier for us
+            // IdentityMode.OIDCClient generates a code challenge and verifier for us
             // this is step 4 of here https://solid.github.io/solid-oidc/primer/#authorization-code-pkce-flow
             // we will need the Code Verifier later, so let's save it
             _clientCodeVerifier = state.CodeVerifier;
