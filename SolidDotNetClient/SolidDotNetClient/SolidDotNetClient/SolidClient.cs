@@ -10,6 +10,8 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using VDS.RDF;
+using VDS.RDF.Parsing;
 
 namespace SolidDotNet
 {
@@ -46,6 +48,9 @@ namespace SolidDotNet
         public bool UseDebug => _useDebug;
         public string Access_Token => _clientAccessToken;
         public string Client_Token = _clientIdToken;
+        public bool HasClientToken => !string.IsNullOrEmpty(_clientIdToken);
+        public bool HasAccessToken => !string.IsNullOrEmpty(_clientAccessToken);
+        public bool IsLoggedIn => HasAccessToken;
         #endregion
 
         #region Constructors
@@ -60,17 +65,67 @@ namespace SolidDotNet
         #endregion
 
         #region Public Methods
+        /// <summary>
+        /// Returns the user name if we have an access token (if we are logged in) or an empty string if we are not
+        /// </summary>
+        /// <returns>The user name if logged in, otherwise empty string</returns>
+        public string GetUserName()
+        {
+            if (IsLoggedIn)
+            {
+                IGraph g = new Graph();
+                UriLoader.Load(g, new Uri(IdentityProviderUrl + "/profile/card#me"));
+
+                var triples = g.Triples;
+                foreach (var triple in triples)
+                {
+                    if (triple.Predicate.NodeType == NodeType.Uri)
+                    {
+                        var uriNode = triple.Predicate as UriNode;
+                        if (uriNode.Uri.Fragment.Contains("#fn"))
+                        {
+                            if (triple.Object.NodeType == NodeType.Literal)
+                            {
+                                var literal = triple.Object as ILiteralNode;
+                                return literal.Value;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Determines if we should write to the debug console (in the IDE) and to the Console window
+        /// </summary>
+        /// <param name="useDebug"></param>
         public void SetDebug(bool useDebug)
         {
             _useDebug = useDebug;
         }
 
+        /// <summary>
+        /// Attempts to get our access and id tokens from the Identity Provider
+        /// </summary>
+        /// <param name="appCode">The app code given to us by the Identity Provider (provided usually after dynamic client registration)</param>
+        /// <param name="issuerUrl">The issuer url (usually ourselves)</param>
+        /// <param name="audienceUrl">The audience url (usually ourselves)</param>
+        /// <returns></returns>
         public async Task GetAccessAndIdTokensAsync(string appCode, string issuerUrl, string audienceUrl)
         {
             _clientAppCode = appCode;
             await GetAccessAndIdTokensAsync(issuerUrl, audienceUrl);
         }
 
+        /// <summary>
+        /// Attempts to get our access and id tokens from the Identity Provider
+        /// </summary>
+        /// <param name="issuerUrl">The issuer url (usually ourselves)</param>
+        /// <param name="audienceUrl">The audience url (usually ourselves)</param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         public async Task GetAccessAndIdTokensAsync(string issuerUrl, string audienceUrl)
         {
             string url = _endpointInfo.token_endpoint;
@@ -149,6 +204,11 @@ namespace SolidDotNet
             }
         }
 
+        /// <summary>
+        /// Constructs the url to login the user, saves the code verifier challenge internally
+        /// </summary>
+        /// <param name="redirectUrl">The url we want the Identity Provider to redirect the user back to after logging in</param>
+        /// <returns></returns>
         public async Task<string> GetLoginUrlAsync(string redirectUrl)
         {
             // https://identitymodel.readthedocs.io/en/latest/native/manual.html?highlight=OidcClientOptions
@@ -182,6 +242,13 @@ namespace SolidDotNet
             return url;
         }
 
+        /// <summary>
+        /// Registers our app via Dynamic Client Registration
+        /// </summary>
+        /// <param name="identityProvider">The identity provider url (usually Community Solid Server)</param>
+        /// <param name="redirectUris">An array of uris that we accept for redirection after logging in</param>
+        /// <param name="appName">A name for our application</param>
+        /// <returns></returns>
         public async Task RegisterAppAsync(string identityProvider, string[] redirectUris, string appName)
         {
             _identityProviderUrl = identityProvider;
@@ -189,6 +256,12 @@ namespace SolidDotNet
             await RegisterAppAsync(redirectUris, appName);
         }
 
+        /// <summary>
+        /// Registers our app via Dynamic Client Registration. Defaults the identity provider url to one that was identified automatically
+        /// </summary>
+        /// <param name="redirectUris">An array of uris that we accept for redirection after logging in</param>
+        /// <param name="appName">A name for our application</param>
+        /// <returns></returns>
         public async Task RegisterAppAsync(string[] redirectUris, string appName)
         {
             if (string.IsNullOrEmpty(_appName))
@@ -239,22 +312,38 @@ namespace SolidDotNet
             }
         }
 
+        /// <summary>
+        /// Sets the identity provider for the client, usually the Community Solid Server
+        /// </summary>
+        /// <param name="identityProvider"></param>
+        /// <returns></returns>
         public async Task SetIdentityProviderAsync(string identityProvider)
         {
             _identityProviderUrl = identityProvider;
             await GetConfigurationAsync();
         }
 
+        /// <summary>
+        /// Sets the name of our app
+        /// </summary>
+        /// <param name="appName"></param>
         public void SetAppName(string appName)
         {
             _appName = appName;
         }
 
+        /// <summary>
+        /// Sets the app code (usually provided by the Identity Provider after Dynamic Client Registration)
+        /// </summary>
+        /// <param name="appCode"></param>
         public void SetAppCode(string appCode)
         {
             _clientAppCode = appCode;
         }
 
+        /// <summary>
+        /// Generates an RSA public/private set of keys
+        /// </summary>
         public void GenerateKeys()
         {
             var rsa = RSA.Create();
@@ -268,6 +357,10 @@ namespace SolidDotNet
             _hasGeneratedKeys = true;
         }
 
+        /// <summary>
+        /// Returns the generated RSA private key as a Json Web Key (JWK)
+        /// </summary>
+        /// <returns></returns>
         public JsonWebKey GetPrivateJsonWebKey()
         {
             if (!HasGeneratedKeys)
@@ -278,6 +371,10 @@ namespace SolidDotNet
             return JsonWebKeyConverter.ConvertFromRSASecurityKey(_privateRSAKey);
         }
 
+        /// <summary>
+        /// Returns the generated RSA public key as a Json Web Key (JWK)
+        /// </summary>
+        /// <returns></returns>
         public JsonWebKey GetPublicJsonWebKey()
         {
             if (!HasGeneratedKeys)

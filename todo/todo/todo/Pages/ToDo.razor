@@ -9,9 +9,20 @@
     <button class="btn btn-primary" @onclick="LoginToSolid">Login To Solid Community Server</button>
 </p>
 
+
+<p>
+    <label>
+        User Name:
+        <input value="@userName"
+               @onchange="@((ChangeEventArgs __e) => userName = __e?.Value?.ToString())" />
+    </label>
+</p>
+
 @code {
     string identityProvider = "http://localhost:3000";
     string appName = "BlazorToDo";
+    List<ToDo> todoItems = new List<ToDo>();
+    string userName = string.Empty;
 
     private async Task LoginToSolid()
     {
@@ -48,6 +59,7 @@
             {
                 string audienceAndIssuerUrl = navigation.BaseUri + "todo";
                 await client.GetAccessAndIdTokensAsync(audienceAndIssuerUrl, audienceAndIssuerUrl);
+                userName = client.GetUserName();
             }
 
             StateHasChanged();
