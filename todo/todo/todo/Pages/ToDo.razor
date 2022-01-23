@@ -1,0 +1,56 @@
+﻿@page "/todo"
+@inject SolidDotNet.SolidClient client
+@inject NavigationManager navigation
+
+<h3>To Do</h3>
+
+
+<p>
+    <button class="btn btn-primary" @onclick="LoginToSolid">Login To Solid Community Server</button>
+</p>
+
+@code {
+    string identityProvider = "http://localhost:3000";
+    string appName = "BlazorToDo";
+
+    private async Task LoginToSolid()
+    {
+        string[] redirectUris = new string[1] { "https://localhost:7143/todo" };
+        await client.RegisterAppAsync(identityProvider, redirectUris, appName);
+        var url = await client.GetLoginUrlAsync(redirectUris.First());
+        navigation.NavigateTo(url);
+    }
+
+    protected async override void OnInitialized()
+    {
+        GetQueryStringValues();
+        navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    void GetQueryStringValues()
+    {
+        string appCode;
+        navigation.TryGetQueryString<string>("code", out appCode);
+        client.SetAppCode(appCode);
+    }
+
+    void HandleLocationChanged(object sender, LocationChangedEventArgs e)
+    {
+        GetQueryStringValues();
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!string.IsNullOrEmpty(client.AppCode))
+            {
+                string audienceAndIssuerUrl = navigation.BaseUri + "todo";
+                await client.GetAccessAndIdTokensAsync(audienceAndIssuerUrl, audienceAndIssuerUrl);
+            }
+
+            StateHasChanged();
+        }
+    }
+}
