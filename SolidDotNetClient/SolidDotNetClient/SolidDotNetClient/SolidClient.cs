@@ -39,6 +39,9 @@ namespace SolidDotNet
         private static string _clientAppCode;
         private static string _clientIdToken;
         private static string _clientAccessToken;
+
+        // values at the pod
+        private static Graph _containers;
         #endregion
 
         #region Public Properties
@@ -202,6 +205,8 @@ namespace SolidDotNet
             {
                 throw new Exception(response.ErrorDescription);
             }
+
+            await GetContainersAsync();
         }
 
         /// <summary>
@@ -536,6 +541,25 @@ namespace SolidDotNet
         #endregion
 
         #region Private Methods
+        private async Task GetContainersAsync()
+        {
+            if (!string.IsNullOrEmpty(IdentityProviderUrl))
+            {
+                if (_client is not null)
+                {
+                    var response = await _client.GetAsync(_identityProviderUrl);
+                    var text = response.Content.ReadAsStringAsync().Result;
+
+                    var parser = new TurtleParser();
+                    var g = new Graph();
+                    g.BaseUri = new Uri("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
+                    var reader = new StringReader(text);
+                    parser.Load(g, reader);
+                    _containers = g;
+                }
+            }
+        }
+
         private void DebugOut(string item)
         {
             if (_useDebug)
