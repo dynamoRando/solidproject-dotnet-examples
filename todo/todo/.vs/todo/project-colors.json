@@ -1,0 +1,16 @@
+{
+  "Version": 1,
+  "ProjectMap": {
+    "cab47feb-af3e-4e02-82f9-6d57bb4bf2e6": {
+      "ProjectGuid": "cab47feb-af3e-4e02-82f9-6d57bb4bf2e6",
+      "DisplayName": "todo",
+      "ColorIndex": 0
+    },
+    "1ae4663c-1e77-43b6-a2a4-33631e982087": {
+      "ProjectGuid": "1ae4663c-1e77-43b6-a2a4-33631e982087",
+      "DisplayName": "SolidDotNetClient",
+      "ColorIndex": 1
+    }
+  },
+  "NextColorIndex": 2
+}
