@@ -405,13 +405,6 @@ namespace SolidDotNet
                 GenerateKeys();
             }
 
-            // stolen from the internet to compute iat, exp values
-            var utc0 = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-            var issueTime = DateTime.UtcNow;
-
-            var iat = (int)issueTime.Subtract(utc0).TotalSeconds;
-            //var exp = (int)issueTime.AddMinutes(55).Subtract(utc0).TotalSeconds;
-
             // a secret key that we know
             var key = new RsaSecurityKey(_privateKey);
 
@@ -454,7 +447,7 @@ namespace SolidDotNet
 
             // the date when the token was issued, must be an integer (not a string)
             // this is required
-            dpopToken.Payload.AddClaim(new Claim("iat", iat.ToString(), ClaimValueTypes.Integer));
+            dpopToken.Payload.AddClaim(new Claim("iat", ComputeCurrentIat().ToString(), ClaimValueTypes.Integer));
 
             var text = new JwtSecurityTokenHandler().WriteToken(dpopToken);
 
@@ -478,10 +471,7 @@ namespace SolidDotNet
             }
 
             // stolen from the internet to compute iat, exp values
-            var utc0 = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-            var issueTime = DateTime.UtcNow;
-
-            var iat = (int)issueTime.Subtract(utc0).TotalSeconds;
+         
             //var exp = (int)issueTime.AddMinutes(55).Subtract(utc0).TotalSeconds;
 
             // a secret key that we know
@@ -535,7 +525,7 @@ namespace SolidDotNet
 
             // the date when the token was issued, must be an integer (not a string)
             // this is required
-            dpopToken.Payload.AddClaim(new Claim("iat", iat.ToString(), ClaimValueTypes.Integer));
+            dpopToken.Payload.AddClaim(new Claim("iat", ComputeCurrentIat().ToString(), ClaimValueTypes.Integer));
 
             // debugging
             var text = new JwtSecurityTokenHandler().WriteToken(dpopToken);
@@ -570,6 +560,14 @@ namespace SolidDotNet
                     }
                 }
             }
+        }
+
+        private double ComputeCurrentIat()
+        {
+            var utc0 = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+            var issueTime = DateTime.UtcNow;
+
+            return (int)issueTime.Subtract(utc0).TotalSeconds;
         }
         #endregion
 
