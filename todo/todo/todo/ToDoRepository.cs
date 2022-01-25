@@ -5,7 +5,7 @@ using todo.Data;
 namespace todo
 {
     /// <summary>
-    /// Handles actions related to the To Do list we're going to render on page. Intended to be somewhat analgous to a repository. 
+    /// A backing data store for our To Do items. Intended to be somewhat analgous to a repository. 
     /// </summary>
     /// <remarks>Internally, this communicates to our Solid Pod via a <see cref="SolidClient"/>.</remarks>
     public class ToDoRepository
@@ -32,7 +32,7 @@ namespace todo
 
         #region Public Methods
         /// <summary>
-        /// Checks for the existence of the "to do" folder and creates it if it does not exist
+        /// Checks for the existence of the "to do" folder at our Solid Pod and creates it if it does not exist
         /// </summary>
         /// <param name="toDoFolderName"></param>
         /// <returns></returns>
@@ -55,7 +55,7 @@ namespace todo
         }
 
         /// <summary>
-        /// Returns a list of To Do items stored at the pod
+        /// Returns a list of To Do items stored at the Solid Pod
         /// </summary>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
@@ -72,9 +72,8 @@ namespace todo
             else
             {
                 // we need to read the to do list document
-                var rdfText = _solidClient.GetRdfDocument(_folderName, TODO_FILENAME);
                 DebugOut("We need to read the to do document");
-                
+                var rdfText = _solidClient.GetRdfDocument(_folderName, TODO_FILENAME);
             }
 
             throw new NotImplementedException();

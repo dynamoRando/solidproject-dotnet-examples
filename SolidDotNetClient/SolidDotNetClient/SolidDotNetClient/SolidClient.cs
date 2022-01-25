@@ -211,6 +211,13 @@ namespace SolidDotNet
             }
         }
 
+        /// <summary>
+        /// Attempts to get raw text of the RDF document in the specifed container (folder) with the specified name
+        /// </summary>
+        /// <param name="folderName">The name of the container (folder)</param>
+        /// <param name="docName">The name of the file</param>
+        /// <returns>The raw text of the RDF document</returns>
+        /// <remarks>Completed via HTTP GET</remarks>
         public async Task<string> GetRdfDocument(string folderName, string docName)
         {
             var uri = _folders.Get(folderName);
@@ -239,7 +246,6 @@ namespace SolidDotNet
                                 DebugOut(text);
 
                                 return text;
-
                             }
                         }
                         catch (Exception ex)
@@ -271,7 +277,7 @@ namespace SolidDotNet
                 {
                     if (_client is not null)
                     {
-                        // see the section "Creating Documents (Files)
+                        // see the section "Creating Documents (Files)"
                         // https://github.com/solid/solid-spec/blob/master/api-rest.md
 
                         /*
