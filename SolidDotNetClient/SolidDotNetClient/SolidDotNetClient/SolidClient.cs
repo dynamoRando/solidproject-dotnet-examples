@@ -68,10 +68,31 @@ namespace SolidDotNet
         #endregion
 
         #region Public Methods
+        public async Task<Uri> GetOrCreateFolderAsync(string folder)
+        {
+            if (!_folders.Contains(folder))
+            {
+                // create the folder at the pod
+                await CreateFolderAsync(folder);
+                // then reload the folder collection
+                await GetContainersAsync();
+
+                // and then return back to the user
+                return _folders.Get(folder);
+            }
+            else
+            {
+                return _folders.Get(folder);
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// Returns the user name if we have an access token (if we are logged in) or an empty string if we are not
         /// </summary>
         /// <returns>The user name if logged in, otherwise empty string</returns>
+        /// <remarks>Action performed via HTTP GET</remarks>
         public string GetUserName()
         {
             if (IsLoggedIn)
@@ -129,6 +150,7 @@ namespace SolidDotNet
         /// <param name="audienceUrl">The audience url (usually ourselves)</param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
+        /// <remarks>This action is done via HTTP POST</remarks>
         public async Task GetAccessAndIdTokensAsync(string issuerUrl, string audienceUrl)
         {
             string url = _endpointInfo.token_endpoint;
@@ -267,6 +289,7 @@ namespace SolidDotNet
         /// <param name="redirectUris">An array of uris that we accept for redirection after logging in</param>
         /// <param name="appName">A name for our application</param>
         /// <returns></returns>
+        /// <remarks>This action is performed via HTTP POST</remarks>
         public async Task RegisterAppAsync(string[] redirectUris, string appName)
         {
             if (string.IsNullOrEmpty(_appName))
@@ -476,7 +499,7 @@ namespace SolidDotNet
             }
 
             // stolen from the internet to compute iat, exp values
-         
+
             //var exp = (int)issueTime.AddMinutes(55).Subtract(utc0).TotalSeconds;
 
             // a secret key that we know
@@ -541,6 +564,71 @@ namespace SolidDotNet
         #endregion
 
         #region Private Methods
+        /// <summary>
+        /// Creates a container (folder) at the pod via HTTP POST
+        /// </summary>
+        /// <param name="folder">The name of the folder</param>
+        /// <returns></returns>
+        private async Task CreateFolderAsync(string folder)
+        {
+            if (_identityProviderUrl is not null)
+            {
+                if (_client is not null)
+                {
+                    // see the section "Creating Containers (Directories)
+                    // https://github.com/solid/solid-spec/blob/master/api-rest.md
+
+                    /*
+                    POST / HTTP/1.1
+                    Host: example.org
+                    Content-Type: text/turtle
+                    Link: <http://www.w3.org/ns/ldp#BasicContainer>; rel="type"
+                    Slug: data
+    
+                    <> <http://purl.org/dc/terms/title> "Basic container" .
+                    */
+
+                    string content = @"<> <http://purl.org/dc/terms/title> ""Basic container"" .";
+                    string containerHeader = @"<http://www.w3.org/ns/ldp#BasicContainer>; rel=""type""";
+                    string domain = IdentityProviderUrl.Replace("http://", string.Empty).Replace("https://", string.Empty);
+                    string targetUrl = string.Empty;
+
+                    if (!IdentityProviderUrl.EndsWith('/'))
+                    {
+                        targetUrl = IdentityProviderUrl + "/";
+                    }
+                    else
+                    {
+                        targetUrl = IdentityProviderUrl;
+                    }
+
+                    try
+                    {
+                        _client.DefaultRequestHeaders.Clear();
+                        _client.DefaultRequestHeaders.Add("Host", domain);
+                        _client.DefaultRequestHeaders.Add("Link", containerHeader);
+                        _client.DefaultRequestHeaders.Add("Slug", folder);
+                        _client.DefaultRequestHeaders.Add("authorization", "DPoP " + Access_Token);
+                        _client.DefaultRequestHeaders.Add("DPoP", BuildJwtForContent("POST", targetUrl));
+
+                        var stringContent = new StringContent(content, Encoding.UTF8, "text/turtle");
+                        var result = await _client.PostAsync(IdentityProviderUrl, stringContent);
+
+                        DebugOut(result.StatusCode.ToString());
+                    }
+                    catch (Exception ex)
+                    {
+                        DebugOut(ex.ToString());
+                        throw ex;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the contents of the pod via HTTP GET
+        /// </summary>
+        /// <returns></returns>
         private async Task GetContainersAsync()
         {
             if (_folders is null)
@@ -554,6 +642,7 @@ namespace SolidDotNet
             {
                 if (_client is not null)
                 {
+                    _client.DefaultRequestHeaders.Clear();
                     var response = await _client.GetAsync(_identityProviderUrl);
                     var text = response.Content.ReadAsStringAsync().Result;
 
@@ -564,7 +653,7 @@ namespace SolidDotNet
                     parser.Load(g, reader);
                     var triples = g.Triples;
                     var subjects = triples.SubjectNodes;
-                    foreach(var subject in subjects)
+                    foreach (var subject in subjects)
                     {
                         if (subject.NodeType == NodeType.Uri)
                         {
@@ -589,6 +678,10 @@ namespace SolidDotNet
             }
         }
 
+        /// <summary>
+        /// Gets the configuration of the pod via HTTP GET
+        /// </summary>
+        /// <returns></returns>
         private async Task GetConfigurationAsync()
         {
             if (!string.IsNullOrEmpty(_identityProviderUrl))

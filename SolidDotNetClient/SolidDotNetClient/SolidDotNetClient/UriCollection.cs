@@ -34,6 +34,16 @@ namespace SolidDotNetClient
         #region Public Methods
         public Uri Get(string folder)
         {
+            if (!folder.EndsWith("/"))
+            {
+                folder = folder + "/";
+            }
+
+            if (!folder.StartsWith("/"))
+            {
+                folder = "/" + folder;
+            }
+
             foreach (var Uri in _Uris)
             {
                 if (string.Equals(Uri.AbsolutePath, folder, StringComparison.OrdinalIgnoreCase))
@@ -72,6 +82,16 @@ namespace SolidDotNetClient
 
         public bool Contains(string folder)
         {
+            if (!folder.EndsWith("/"))
+            {
+                folder = folder + "/";
+            }
+
+            if (!folder.StartsWith("/"))
+            {
+                folder = "/" + folder;
+            }
+
             foreach (var Uri in _Uris)
             {
                 if (string.Equals(Uri.AbsolutePath, folder, StringComparison.OrdinalIgnoreCase))
@@ -104,6 +124,16 @@ namespace SolidDotNetClient
 
         public bool Remove(string folder)
         {
+            if (!folder.EndsWith("/"))
+            {
+                folder = folder + "/";
+            }
+
+            if (!folder.StartsWith("/"))
+            {
+                folder = "/" + folder;
+            }
+
             bool result = false;
 
             // Iterate the inner collection to

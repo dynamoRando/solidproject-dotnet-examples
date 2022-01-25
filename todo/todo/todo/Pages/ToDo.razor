@@ -1,4 +1,5 @@
 ﻿@page "/todo"
+@using System.Diagnostics
 @inject SolidDotNet.SolidClient client
 @inject NavigationManager navigation
 
@@ -6,7 +7,7 @@
 
 
 <p>
-    <button class="btn btn-primary" @onclick="LoginToSolid">Login To Solid Community Server</button>
+    <button class="btn btn-primary" @onclick="LoginToSolidAsync">Login To Solid Community Server</button>
 </p>
 
 
@@ -18,13 +19,20 @@
     </label>
 </p>
 
+<p>
+    <button class="btn btn-primary" @onclick="LoadToDosAsync">Load To Dos</button>
+</p>
+
+
 @code {
     string identityProvider = "http://localhost:3000";
     string appName = "BlazorToDo";
     List<ToDo> todoItems = new List<ToDo>();
     string userName = string.Empty;
 
-    private async Task LoginToSolid()
+    bool useDebug = true;
+
+    private async Task LoginToSolidAsync()
     {
         string[] redirectUris = new string[1] { "https://localhost:7143/todo" };
         await client.RegisterAppAsync(identityProvider, redirectUris, appName);
@@ -65,4 +73,19 @@
             StateHasChanged();
         }
     }
+
+    private async Task LoadToDosAsync()
+    {
+        var folder = await client.GetOrCreateFolderAsync("todos");
+        DebugOut($"{folder.PathAndQuery} exists!");
+    }
+
+        private void DebugOut(string item)
+        {
+            if (useDebug)
+            {
+                Console.WriteLine(item);
+                Debug.WriteLine(item);
+            }
+        }
 }
