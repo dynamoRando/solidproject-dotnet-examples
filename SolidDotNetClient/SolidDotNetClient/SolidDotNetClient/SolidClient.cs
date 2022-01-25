@@ -143,6 +143,70 @@ namespace SolidDotNet
             }
         }
 
+        /// <summary>
+        /// Deletes a document in the specified folder at the pod with the specific name
+        /// </summary>
+        /// <param name="folderName">The name of the folder at the pod</param>
+        /// <param name="docName">The name of the document at the pod</param>
+        /// <returns></returns>
+        public async Task UpdateRdfDocumentAsync(string folderName, string docName)
+        {
+            var uri = _folders.Get(folderName);
+
+            if (uri is not null)
+            {
+                if (_identityProviderUrl is not null)
+                {
+                    if (_client is not null)
+                    {
+                        var docLocation = uri.OriginalString + docName;
+
+                        if (!docLocation.EndsWith("/"))
+                        {
+                            docLocation = docLocation + "/";
+                        }
+
+                        // see the section "Creating Documents (Files)
+                        // https://github.com/solid/solid-spec/blob/master/api-rest.md
+
+                        /*
+                        DELETE /alice/avatar HTTP/1.1
+                        Host: example.org       
+                        */
+
+                     
+                        string domain = IdentityProviderUrl.Replace("http://", string.Empty).Replace("https://", string.Empty);
+                        string targetUrl = string.Empty;
+
+                        if (!IdentityProviderUrl.EndsWith('/'))
+                        {
+                            targetUrl = IdentityProviderUrl + "/";
+                        }
+                        else
+                        {
+                            targetUrl = IdentityProviderUrl;
+                        }
+
+                        try
+                        {
+                            _client.DefaultRequestHeaders.Clear();
+                            _client.DefaultRequestHeaders.Add("Host", domain);
+                            _client.DefaultRequestHeaders.Add("authorization", "DPoP " + Access_Token);
+                            _client.DefaultRequestHeaders.Add("DPoP", BuildJwtForContent("DELETE", targetUrl));
+
+                            var result = await _client.DeleteAsync(docLocation);
+
+                            DebugOut(result.StatusCode.ToString());
+                        }
+                        catch (Exception ex)
+                        {
+                            DebugOut(ex.ToString());
+                            throw ex;
+                        }
+                    }
+                }
+            }
+        }
 
         /// <summary>
         /// Creates a document in the specified folder at the pod with the specific name and content
