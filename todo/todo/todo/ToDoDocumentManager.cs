@@ -12,7 +12,7 @@ namespace todo
     {
         #region Private Fields
         private string _baseUri = string.Empty;
-        
+
         // a graph represents an RDF document
         private Graph _graph;
 
@@ -79,7 +79,11 @@ namespace todo
              */
 
             _graph.NamespaceMap.AddNamespace("as", UriFactory.Create("https://www.w3.org/ns/activitystreams#"));
-            _graph.NamespaceMap.AddNamespace("rdf", UriFactory.Create("http://www.w3.org/1999/02/22-rdf-syntax-ns#"));
+
+            // http://www.w3.org/1999/02/22-rdf-syntax-ns
+            // added the #type
+
+            _graph.NamespaceMap.AddNamespace("rdf", UriFactory.Create("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"));
             _graph.NamespaceMap.AddNamespace("xsd", UriFactory.Create("http://www.w3.org/2001/XMLSchema#"));
             _graph.NamespaceMap.AddNamespace("ldp", UriFactory.Create("http://www.w3.org/ns/ldp#"));
             _graph.NamespaceMap.AddNamespace("skos", UriFactory.Create("http://www.w3.org/2004/02/skos/core#"));
