@@ -15,6 +15,9 @@ using VDS.RDF.Parsing;
 
 namespace SolidDotNet
 {
+    /// <summary>
+    /// Helper class for performing various actions at a Solid Pod
+    /// </summary>
     public class SolidClient
     {
         #region Private Fields
@@ -79,7 +82,7 @@ namespace SolidDotNet
         public async Task UpdateRdfDocumentAsync(string folderName, string docName, string docContent)
         {
             var uri = _folders.Get(folderName);
-         
+
             if (uri is not null)
             {
                 if (_identityProviderUrl is not null)
@@ -263,7 +266,7 @@ namespace SolidDotNet
                             _client.DefaultRequestHeaders.Add("Link", contentHeader);
                             _client.DefaultRequestHeaders.Add("Slug", docName);
                             _client.DefaultRequestHeaders.Add("authorization", "DPoP " + Access_Token);
-                            _client.DefaultRequestHeaders.Add("DPoP", BuildJwtForContent("POST", targetUrl));
+                            _client.DefaultRequestHeaders.Add("DPoP", BuildJwtForContent("POST", uri.OriginalString));
 
                             var stringContent = new StringContent(content, Encoding.UTF8, "text/turtle");
                             var result = await _client.PostAsync(uri, stringContent);
@@ -285,6 +288,7 @@ namespace SolidDotNet
         /// </summary>
         /// <param name="folder">The folder to check for</param>
         /// <returns>The uri of the specified folder</returns>
+        /// <remarks>This is verified via HTTP GET and if needed created via an HTTP POST</remarks>
         public async Task<Uri> GetOrCreateFolderAsync(string folder)
         {
             if (!_folders.Contains(folder))
@@ -777,6 +781,62 @@ namespace SolidDotNet
             // we can validate the text at https://jwt.io/ if we want
             return text;
         }
+
+        public async Task<List<Uri>> GetContentsOfContainer(string containerName)
+        {
+            string uri = string.Empty;
+
+            if (!containerName.EndsWith('/'))
+            {
+                containerName = containerName + "/";
+            }
+
+            if (!containerName.StartsWith('/'))
+            {
+                containerName = "/" + containerName;
+            }
+
+            if (!IdentityProviderUrl.EndsWith("/"))
+            {
+                uri = IdentityProviderUrl + "/" + containerName;
+            }
+
+            uri = IdentityProviderUrl + containerName;
+
+            if (!string.IsNullOrEmpty(IdentityProviderUrl))
+            {
+                if (_client is not null)
+                {
+                    try
+                    {
+                        _client.DefaultRequestHeaders.Clear();
+                        _client.DefaultRequestHeaders.Add("accept", "text/turtle");
+                        _client.DefaultRequestHeaders.Add("authorization", "DPoP " + Access_Token);
+                        _client.DefaultRequestHeaders.Add("DPoP", BuildJwtForContent("GET", uri));
+                        var response = await _client.GetAsync(uri);
+
+                        DebugOut(response.StatusCode.ToString());
+
+                        if (response.StatusCode == HttpStatusCode.OK)
+                        {
+                            var text = response.Content.ReadAsStringAsync().Result;
+                            DebugOut(text);
+
+                            var contents = GetSubjectUris(text);
+                            return contents;
+
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        DebugOut(ex.ToString());
+                    }
+
+                }
+            }
+
+            return null;
+        }
         #endregion
 
         #region Private Methods
@@ -791,7 +851,7 @@ namespace SolidDotNet
             {
                 if (_client is not null)
                 {
-                    // see the section "Creating Containers (Directories)
+                    // see the section "Creating Containers (Directories)"
                     // https://github.com/solid/solid-spec/blob/master/api-rest.md
 
                     /*
@@ -841,6 +901,8 @@ namespace SolidDotNet
             }
         }
 
+
+
         /// <summary>
         /// Gets the contents of the pod via HTTP GET
         /// </summary>
@@ -862,25 +924,13 @@ namespace SolidDotNet
                     var response = await _client.GetAsync(_identityProviderUrl);
                     var text = response.Content.ReadAsStringAsync().Result;
 
-                    var parser = new TurtleParser();
-                    var g = new Graph();
-                    g.BaseUri = new Uri(IdentityProviderUrl);
-                    var reader = new StringReader(text);
-                    parser.Load(g, reader);
-                    var triples = g.Triples;
-                    var subjects = triples.SubjectNodes;
-                    foreach (var subject in subjects)
+                    var folders = GetSubjectUris(text);
+                    foreach (var folder in folders)
                     {
-                        if (subject.NodeType == NodeType.Uri)
-                        {
-                            var item = subject as UriNode;
-                            if (!string.IsNullOrEmpty(item.Uri.AbsolutePath))
-                            {
-                                _folders.Add(item.Uri);
-                                DebugOut($"Discovered item at server: {item.Uri.AbsolutePath}");
-                            }
-                        }
+                        DebugOut($"Discovered item at server: {folder.AbsolutePath}");
                     }
+
+                    _folders.AddRange(folders);
                 }
             }
         }
@@ -921,6 +971,32 @@ namespace SolidDotNet
             var issueTime = DateTime.UtcNow;
 
             return (int)issueTime.Subtract(utc0).TotalSeconds;
+        }
+
+        private List<Uri> GetSubjectUris(string text)
+        {
+            var result = new List<Uri>();
+
+            var parser = new TurtleParser();
+            var g = new Graph();
+            g.BaseUri = new Uri(IdentityProviderUrl);
+            var reader = new StringReader(text);
+            parser.Load(g, reader);
+            var triples = g.Triples;
+            var subjects = triples.SubjectNodes;
+            foreach (var subject in subjects)
+            {
+                if (subject.NodeType == NodeType.Uri)
+                {
+                    var item = subject as UriNode;
+                    if (!string.IsNullOrEmpty(item.Uri.AbsolutePath))
+                    {
+                        result.Add(item.Uri);
+                    }
+                }
+            }
+
+            return result;
         }
         #endregion
 

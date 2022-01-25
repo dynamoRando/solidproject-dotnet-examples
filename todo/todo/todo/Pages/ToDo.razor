@@ -3,8 +3,13 @@
 @inject SolidDotNet.SolidClient client
 @inject NavigationManager navigation
 
-<h3>To Do</h3>
+<h3>To Do Page</h3>
 
+<p>This page is the front facing page for our To Do app. The actual component handling To Do items, rendering, etc is handled by the 
+    Blazor ToDoComponent, which is embedded in this page.
+</p>
+
+<p>To get started, please first login. If we are successful, we should be able to read your name from the pod.</p>
 
 <p>
     <button class="btn btn-primary" @onclick="LoginToSolidAsync">Login To Solid Community Server</button>
@@ -19,17 +24,14 @@
     </label>
 </p>
 
-<p>
-    <button class="btn btn-primary" @onclick="LoadToDosAsync">Load To Dos</button>
-</p>
 
+
+<ToDoComponent></ToDoComponent>
 
 @code {
     string identityProvider = "http://localhost:3000";
     string appName = "BlazorToDo";
-    string folderName = "todo";
-
-    ToDoManager _manager;
+  
     List<ToDo> todoItems = new List<ToDo>();
     string userName = string.Empty;
 
@@ -47,7 +49,7 @@
     {
         GetQueryStringValues();
         navigation.LocationChanged += HandleLocationChanged;
-        ConfigureToDoManager();
+        
     }
 
     void GetQueryStringValues()
@@ -78,12 +80,6 @@
         }
     }
 
-    private async Task LoadToDosAsync()
-    {
-        var folder = await client.GetOrCreateFolderAsync(folderName);
-        DebugOut($"{folder.PathAndQuery} exists!");
-    }
-
     private void DebugOut(string item)
     {
         if (useDebug)
@@ -93,11 +89,5 @@
         }
     }
 
-    private void ConfigureToDoManager()
-    {
-        if (_manager is null)
-        {
-            _manager = new ToDoManager();
-        }
-    }
+   
 }

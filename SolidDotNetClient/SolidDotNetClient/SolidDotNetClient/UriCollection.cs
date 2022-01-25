@@ -157,6 +157,11 @@ namespace SolidDotNetClient
             _Uris.Clear();
         }
 
+        public void AddRange(List<Uri> uris)
+        {
+            _Uris.AddRange(uris);
+        }
+
         public Uri this[int index]
         {
             get { return _Uris[index]; }

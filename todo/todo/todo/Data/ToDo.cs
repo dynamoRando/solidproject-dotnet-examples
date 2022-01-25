@@ -1,5 +1,8 @@
 ﻿namespace todo.Data
 {
+    /// <summary>
+    /// Represents a To Do item, as plain old CLR object (POCO)
+    /// </summary>
     public class ToDo
     {
         public const string TextUri = "http://schema.org/text";

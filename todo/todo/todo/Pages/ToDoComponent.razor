@@ -1,0 +1,57 @@
+﻿@using System.Diagnostics
+@inject SolidDotNet.SolidClient client
+@inject NavigationManager navigation
+
+
+<h3>To Do Component</h3>
+
+<p>
+    This component handles the UI actions for To Do items. It is backed by a ToDoRepository object, which is somewhat analogus to a
+    <a href="https://www.mrjamiebowman.com/software-development/dotnet/repository-pattern/">repository.</a> We are leveraging the 
+    ToDoRepository to abstract away some of the other concepts, such as RDF, LDP, etc.
+</p>
+
+<p>Our ToDoRepository object internally uses an in-progess developed SolidClient object to handle basic interactions with our Solid Pod.
+    The SolidClient API isn't fully developed yet.
+</p>
+
+<p>
+    <button class="btn btn-primary" @onclick="LoadToDosAsync">Load To Dos</button>
+</p>
+
+@code {
+    private ToDoRepository _repository;
+    private bool useDebug = true;
+    private string folderName = "todo";
+
+    protected async override void OnInitialized()
+    {
+        ConfigureToDoManager();
+    }
+
+    private void ConfigureToDoManager()
+    {
+        if (_repository is null)
+        {
+            _repository = new ToDoRepository();
+        }
+
+        _repository.SetSolidClient(client);
+    }
+
+    private async Task LoadToDosAsync()
+    {
+        await _repository.InitAsync(folderName);
+        var items = _repository.GetAll();
+    }
+
+    private void DebugOut(string item)
+    {
+        if (useDebug)
+        {
+            Console.WriteLine(item);
+            Debug.WriteLine(item);
+        }
+    }
+
+}
