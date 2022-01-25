@@ -40,11 +40,16 @@ namespace todo
 
         public void AddToDo(ToDo item)
         {
-            var subjectNode = _graph.CreateUriNode(ToDo.TypeUri);
-            var predicateNode = _graph.CreateUriNode(ToDo.TextUri);
+            var subjectNode = _graph.CreateUriNode("type:");
+            var predicateNode = _graph.CreateUriNode("text:");
             var literalNode = _graph.CreateLiteralNode(item.Text);
 
-            _graph.Assert(subjectNode, predicateNode, literalNode);
+            var triple = new Triple(subjectNode, predicateNode, literalNode);
+
+            if (!_graph.Assert(triple))
+            {
+                throw new InvalidOperationException();
+            }
         }
 
         public void SetupPrefixes()
