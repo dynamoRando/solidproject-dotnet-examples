@@ -93,9 +93,11 @@ namespace todo
         /// </summary>
         /// <param name="item"></param>
         /// <exception cref="NotImplementedException"></exception>
-        public void Add(ToDo item)
+        public async Task AddAsync(ToDo item)
         {
-            throw new NotImplementedException();
+            _docManager.AddToDo(item);
+            var rdfText = _docManager.ToString();
+            await _solidClient.UpdateRdfDocumentAsync(_folderName, TODO_FILENAME,rdfText);
         }
 
         /// <summary>

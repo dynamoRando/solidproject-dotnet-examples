@@ -1,5 +1,6 @@
 ﻿using todo.Data;
 using VDS.RDF;
+using VDS.RDF.Parsing;
 using VDS.RDF.Writing;
 using StringWriter = System.IO.StringWriter;
 
@@ -41,6 +42,22 @@ namespace todo
         /// <exception cref="NotImplementedException"></exception>
         public List<ToDo> ParseDocument(string rdfText)
         {
+            var result = new List<ToDo>();
+
+            var parser = new TurtleParser();
+            _graph.BaseUri = new Uri(_baseUri);
+            var reader = new StringReader(rdfText);
+            parser.Load(_graph, reader);
+
+            if (_graph.Triples.Count == 0)
+            {
+                return result;
+            }
+            else
+            {
+                // need to parse the triples for To Do items
+            }
+
             throw new NotImplementedException();
         }
 

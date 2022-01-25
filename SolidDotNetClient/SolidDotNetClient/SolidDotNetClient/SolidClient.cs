@@ -91,10 +91,12 @@ namespace SolidDotNet
                     {
                         var docLocation = uri.OriginalString + docName;
 
+                        /*
                         if (!docLocation.EndsWith("/"))
                         {
                             docLocation = docLocation + "/";
                         }
+                        */
 
                         // see the section "Creating Documents (Files)
                         // https://github.com/solid/solid-spec/blob/master/api-rest.md
@@ -114,23 +116,14 @@ namespace SolidDotNet
                         string content = docContent;
 
                         string domain = IdentityProviderUrl.Replace("http://", string.Empty).Replace("https://", string.Empty);
-                        string targetUrl = string.Empty;
-
-                        if (!IdentityProviderUrl.EndsWith('/'))
-                        {
-                            targetUrl = IdentityProviderUrl + "/";
-                        }
-                        else
-                        {
-                            targetUrl = IdentityProviderUrl;
-                        }
-
+                        
                         try
                         {
                             _client.DefaultRequestHeaders.Clear();
                             _client.DefaultRequestHeaders.Add("Host", domain);
                             _client.DefaultRequestHeaders.Add("authorization", "DPoP " + Access_Token);
-                            _client.DefaultRequestHeaders.Add("DPoP", BuildJwtForContent("PUT", targetUrl));
+                            _client.DefaultRequestHeaders.Add("Slug", docName);
+                            _client.DefaultRequestHeaders.Add("DPoP", BuildJwtForContent("PUT", docLocation));
 
                             var stringContent = new StringContent(content, Encoding.UTF8, "text/turtle");
                             var result = await _client.PutAsync(docLocation, stringContent);

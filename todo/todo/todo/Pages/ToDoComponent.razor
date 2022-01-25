@@ -8,11 +8,12 @@
 
 <p>
     This component handles the UI actions for To Do items. It is backed by a ToDoRepository object, which is somewhat analogus to a
-    <a href="https://www.mrjamiebowman.com/software-development/dotnet/repository-pattern/">repository.</a> We are leveraging the 
+    <a href="https://www.mrjamiebowman.com/software-development/dotnet/repository-pattern/">repository.</a> We are leveraging the
     ToDoRepository to abstract away some of the other concepts, such as RDF, LDP, etc.
 </p>
 
-<p>Our ToDoRepository object internally uses an in-progess developed SolidClient object to handle basic interactions with our Solid Pod.
+<p>
+    Our ToDoRepository object internally uses an in-progess developed SolidClient object to handle basic interactions with our Solid Pod.
     The SolidClient API isn't fully developed yet.
 </p>
 
@@ -20,10 +21,24 @@
     <button class="btn btn-primary" @onclick="LoadToDosAsync">Load To Dos</button>
 </p>
 
+<h4>Add To Do:</h4>
+<p>
+    <label>
+        To Do Task To Add:
+        <input value="@currentToDo"
+               @onchange="@((ChangeEventArgs __e) => currentToDo = __e?.Value?.ToString())" />
+    </label>
+    <button class="btn btn-primary" @onclick="AddToDo">Add To Do Item</button>
+</p>
+
 @code {
     private ToDoRepository _repository;
     private bool useDebug = true;
     private string folderName = "todo";
+    private static int idCount = 0;
+
+    private string currentToDo = string.Empty;
+
 
     protected async override void OnInitialized()
     {
@@ -53,6 +68,13 @@
             Console.WriteLine(item);
             Debug.WriteLine(item);
         }
+    }
+
+    private async Task AddToDo()
+    {
+        var id = idCount++;
+        var item = new todo.Data.ToDo { Created = DateTime.Now, Id = id, Text = currentToDo };
+        await _repository.AddAsync(item);
     }
 
 }
