@@ -75,6 +75,7 @@ namespace SolidDotNet
         /// <param name="docName">The name of the document at the pod</param>
         /// <param name="docContent">The content of the file, as a Turtle RDF document</param>
         /// <returns></returns>
+        /// <remarks>Performs an HTTP PUT</remarks>
         public async Task UpdateRdfDocumentAsync(string folderName, string docName, string docContent)
         {
             var uri = _folders.Get(folderName);
@@ -149,7 +150,8 @@ namespace SolidDotNet
         /// <param name="folderName">The name of the folder at the pod</param>
         /// <param name="docName">The name of the document at the pod</param>
         /// <returns></returns>
-        public async Task UpdateRdfDocumentAsync(string folderName, string docName)
+        /// <remarks>Performs a HTTP DELETE</remarks>
+        public async Task DeleteRdfDocumentAsync(string folderName, string docName)
         {
             var uri = _folders.Get(folderName);
 
@@ -213,6 +215,7 @@ namespace SolidDotNet
         /// <param name="docName">The name of the document at the pod</param>
         /// <param name="docContent">The content of the file, as a Turtle RDF document</param>
         /// <returns></returns>
+        /// <remarks>Performs an HTTP POST</remarks>
         public async Task CreateRdfDocumentAsync(string folderName, string docName, string docContent)
         {
             var uri = _folders.Get(folderName);
