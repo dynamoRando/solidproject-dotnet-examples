@@ -11,8 +11,13 @@ namespace todo
     public class ToDoDocumentManager
     {
         #region Private Fields
+        
+        // a graph represents an RDF document
         private Graph _graph;
+
+        // to write out to Turtle format
         private TurtleWriter _turtleWriter;
+
         #endregion
 
         #region Public Properties
@@ -35,7 +40,11 @@ namespace todo
 
         public void AddToDo(ToDo item)
         {
-            throw new NotImplementedException();
+            var subjectNode = _graph.CreateUriNode(ToDo.TypeUri);
+            var predicateNode = _graph.CreateUriNode(ToDo.TextUri);
+            var literalNode = _graph.CreateLiteralNode(item.Text);
+
+            _graph.Assert(subjectNode, predicateNode, literalNode);
         }
 
         public void SetupPrefixes()

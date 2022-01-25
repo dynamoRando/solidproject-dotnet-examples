@@ -13,3 +13,5 @@
 /SolidDotNetClient/SolidDotNetClient/SolidDotNetClient/bin/Debug/net6.0
 /SolidDotNetClient/SolidDotNetClient/SolidDotNetClient/obj
 /todo/todo/.vs/todo/DesignTimeBuild
+/todo/todo/todo.Tests/bin/Debug/net6.0
+/todo/todo/todo.Tests/obj
