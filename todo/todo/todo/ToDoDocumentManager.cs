@@ -33,6 +33,21 @@ namespace todo
         #endregion
 
         #region Public Methods
+        /// <summary>
+        /// Parses the supplied rdf text and returns a list of To Do items in that document
+        /// </summary>
+        /// <param name="rdfText">The RDF document from our Solid Pod</param>
+        /// <returns>A List of To Do Items</returns>
+        /// <exception cref="NotImplementedException"></exception>
+        public List<ToDo> ParseDocument(string rdfText)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Sets the base Uri for the underlying RDF document
+        /// </summary>
+        /// <param name="uri"></param>
         public void ConfigureBaseUri(string uri)
         {
             _baseUri = uri;
@@ -40,6 +55,10 @@ namespace todo
             SetupPrefixes();
         }
 
+        /// <summary>
+        /// Adds a to do item as a RDF Triple using Triple Predicates
+        /// </summary>
+        /// <param name="item">The to do item to add</param>
         public void AddToDo(ToDo item)
         {
             // https://www.w3.org/TR/turtle/#predicate-lists
@@ -62,6 +81,9 @@ namespace todo
             _graph.Assert(subjectNode, predicateText, objectText);
         }
 
+        /// <summary>
+        /// Configures the backing RDF document with the needed prefixes
+        /// </summary>
         public void SetupPrefixes()
         {
             /*
@@ -104,6 +126,10 @@ namespace todo
             _graph.NamespaceMap.AddNamespace("type", UriFactory.Create(ToDo.TypeUri));
         }
 
+        /// <summary>
+        /// Returns the backing RDF document as a string
+        /// </summary>
+        /// <returns>The RDF document in a string</returns>
         public override string ToString()
         {
             var writer = new StringWriter();
