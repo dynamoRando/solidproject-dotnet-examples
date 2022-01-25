@@ -101,7 +101,8 @@
 
     private async Task AddToDo()
     {
-        var id = idCount++;
+        idCount = _toDos.Max(i => i.Id);
+        var id = idCount + 1;
         var item = new todo.Data.ToDo { Created = DateTime.Now, Id = id, Text = currentToDo };
         await _repository.AddAsync(item);
     }
