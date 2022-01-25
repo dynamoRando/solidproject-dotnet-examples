@@ -166,15 +166,13 @@ namespace SolidDotNet
                             docLocation = docLocation + "/";
                         }
 
-                        // see the section "Creating Documents (Files)
-                        // https://github.com/solid/solid-spec/blob/master/api-rest.md
+                        // https://www.w3.org/TR/ldp-primer/#deleting-a-resource-delete-on-an-ldpr
 
                         /*
                         DELETE /alice/avatar HTTP/1.1
                         Host: example.org       
                         */
 
-                     
                         string domain = IdentityProviderUrl.Replace("http://", string.Empty).Replace("https://", string.Empty);
                         string targetUrl = string.Empty;
 
