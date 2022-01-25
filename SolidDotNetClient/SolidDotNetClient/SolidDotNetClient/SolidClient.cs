@@ -69,6 +69,153 @@ namespace SolidDotNet
 
         #region Public Methods
         /// <summary>
+        /// Updates a document in the specified folder at the pod with the specific name and content
+        /// </summary>
+        /// <param name="folderName">The name of the folder at the pod</param>
+        /// <param name="docName">The name of the document at the pod</param>
+        /// <param name="docContent">The content of the file, as a Turtle RDF document</param>
+        /// <returns></returns>
+        public async Task UpdateRdfDocumentAsync(string folderName, string docName, string docContent)
+        {
+            var uri = _folders.Get(folderName);
+         
+            if (uri is not null)
+            {
+                if (_identityProviderUrl is not null)
+                {
+                    if (_client is not null)
+                    {
+                        var docLocation = uri.OriginalString + docName;
+
+                        if (!docLocation.EndsWith("/"))
+                        {
+                            docLocation = docLocation + "/";
+                        }
+
+                        // see the section "Creating Documents (Files)
+                        // https://github.com/solid/solid-spec/blob/master/api-rest.md
+
+                        /*
+                        PUT / HTTP/1.1
+                        Host: example.org
+                        Content-Type: text/turtle
+                        Link: <http://www.w3.org/ns/ldp#Resource>; rel="type"
+                        Slug: test
+
+                        <> <http://purl.org/dc/terms/title> "This is a test file" .
+                        */
+
+                        // <> <http://purl.org/dc/terms/title> "This is a test file" .
+                        // not sure if we should try to construct an rdf document here?
+                        string content = docContent;
+
+                        string domain = IdentityProviderUrl.Replace("http://", string.Empty).Replace("https://", string.Empty);
+                        string targetUrl = string.Empty;
+
+                        if (!IdentityProviderUrl.EndsWith('/'))
+                        {
+                            targetUrl = IdentityProviderUrl + "/";
+                        }
+                        else
+                        {
+                            targetUrl = IdentityProviderUrl;
+                        }
+
+                        try
+                        {
+                            _client.DefaultRequestHeaders.Clear();
+                            _client.DefaultRequestHeaders.Add("Host", domain);
+                            _client.DefaultRequestHeaders.Add("authorization", "DPoP " + Access_Token);
+                            _client.DefaultRequestHeaders.Add("DPoP", BuildJwtForContent("PUT", targetUrl));
+
+                            var stringContent = new StringContent(content, Encoding.UTF8, "text/turtle");
+                            var result = await _client.PutAsync(docLocation, stringContent);
+
+                            DebugOut(result.StatusCode.ToString());
+                        }
+                        catch (Exception ex)
+                        {
+                            DebugOut(ex.ToString());
+                            throw ex;
+                        }
+                    }
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Creates a document in the specified folder at the pod with the specific name and content
+        /// </summary>
+        /// <param name="folderName">The name of the folder at the pod</param>
+        /// <param name="docName">The name of the document at the pod</param>
+        /// <param name="docContent">The content of the file, as a Turtle RDF document</param>
+        /// <returns></returns>
+        public async Task CreateRdfDocumentAsync(string folderName, string docName, string docContent)
+        {
+            var uri = _folders.Get(folderName);
+
+            if (uri is not null)
+            {
+                if (_identityProviderUrl is not null)
+                {
+                    if (_client is not null)
+                    {
+                        // see the section "Creating Documents (Files)
+                        // https://github.com/solid/solid-spec/blob/master/api-rest.md
+
+                        /*
+                        POST / HTTP/1.1
+                        Host: example.org
+                        Content-Type: text/turtle
+                        Link: <http://www.w3.org/ns/ldp#Resource>; rel="type"
+                        Slug: test
+
+                        <> <http://purl.org/dc/terms/title> "This is a test file" .
+                        */
+
+                        // <> <http://purl.org/dc/terms/title> "This is a test file" .
+                        // not sure if we should try to construct an rdf document here?
+                        string content = docContent;
+
+                        string contentHeader = @"<http://www.w3.org/ns/ldp#Resource>; rel=""type""";
+                        string domain = IdentityProviderUrl.Replace("http://", string.Empty).Replace("https://", string.Empty);
+                        string targetUrl = string.Empty;
+
+                        if (!IdentityProviderUrl.EndsWith('/'))
+                        {
+                            targetUrl = IdentityProviderUrl + "/";
+                        }
+                        else
+                        {
+                            targetUrl = IdentityProviderUrl;
+                        }
+
+                        try
+                        {
+                            _client.DefaultRequestHeaders.Clear();
+                            _client.DefaultRequestHeaders.Add("Host", domain);
+                            _client.DefaultRequestHeaders.Add("Link", contentHeader);
+                            _client.DefaultRequestHeaders.Add("Slug", docName);
+                            _client.DefaultRequestHeaders.Add("authorization", "DPoP " + Access_Token);
+                            _client.DefaultRequestHeaders.Add("DPoP", BuildJwtForContent("POST", targetUrl));
+
+                            var stringContent = new StringContent(content, Encoding.UTF8, "text/turtle");
+                            var result = await _client.PostAsync(uri, stringContent);
+
+                            DebugOut(result.StatusCode.ToString());
+                        }
+                        catch (Exception ex)
+                        {
+                            DebugOut(ex.ToString());
+                            throw ex;
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Checks for the existence of the specified folder at the pod. If it does not exist, it will create it and reload the internal collection
         /// </summary>
         /// <param name="folder">The folder to check for</param>
