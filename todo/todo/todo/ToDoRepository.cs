@@ -62,7 +62,7 @@ namespace todo
         /// </summary>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
-        public async Task<List<ToDo>> GetAll()
+        public async Task<List<ToDo>> GetAllAsync()
         {
             var hasFile = await _solidClient.ContainerHasFile(_folderName, TODO_FILENAME);
 

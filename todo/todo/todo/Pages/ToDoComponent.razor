@@ -31,11 +31,35 @@
     <button class="btn btn-primary" @onclick="AddToDo">Add To Do Item</button>
 </p>
 
+<div class="container">
+    <h3 class="p-3 text-center">To Do Items</h3>
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Created</th>
+                <th>Text</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var todo in _toDos)
+            {
+                <tr>
+                    <td>@todo.Id.ToString()</td>
+                    <td>@todo.Created.ToString()</td>
+                    <td>@todo.Text</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
 @code {
     private ToDoRepository _repository;
     private bool useDebug = true;
     private string folderName = "todo";
     private static int idCount = 0;
+    private List<todo.Data.ToDo> _toDos = new List<todo.Data.ToDo>();
 
     private string currentToDo = string.Empty;
 
@@ -57,8 +81,13 @@
 
     private async Task LoadToDosAsync()
     {
+        _toDos.Clear();
         await _repository.InitAsync(folderName);
-        var items = _repository.GetAll();
+        var items = await _repository.GetAllAsync();
+        foreach(var item in items)
+        {
+            _toDos.Add(item);
+        }
     }
 
     private void DebugOut(string item)

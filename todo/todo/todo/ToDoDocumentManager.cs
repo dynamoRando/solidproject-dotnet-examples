@@ -56,9 +56,50 @@ namespace todo
             else
             {
                 // need to parse the triples for To Do items
+                int currentItem = 0;
+                foreach (var triple in _graph.Triples)
+                {
+                    if (triple.Subject.NodeType == NodeType.Uri)
+                    {
+                        var uriNode = triple.Subject as UriNode;
+                        if (uriNode.Uri.AbsoluteUri.Contains("index.ttl#"))
+                        {
+                            var idLine = uriNode.Uri.AbsoluteUri;
+                            var id = idLine.Replace(_baseUri, string.Empty).Replace("#", string.Empty);
+
+                            int idValue = Convert.ToInt32(id);
+                            var item = GetOrAddItem(result, idValue);
+                            currentItem = item.Id;
+                        }
+                    }
+
+                    if (triple.Predicate.NodeType == NodeType.Uri)
+                    {
+                        var uriNode = triple.Predicate as UriNode;
+                        if (uriNode.Uri.AbsoluteUri.Contains("#created"))
+                        {
+                            if (triple.Object.NodeType == NodeType.Literal)
+                            {
+                                var literalNode = triple.Object as LiteralNode;
+                                var item = GetItem(result, currentItem);
+                                item.Created = DateTime.Parse(literalNode.Value);
+                            }
+                        }
+
+                        if (uriNode.Uri.AbsoluteUri.Contains("text"))
+                        {
+                            if (triple.Object.NodeType == NodeType.Literal)
+                            {
+                                var literalNode = triple.Object as LiteralNode;
+                                var item = GetItem(result, currentItem);
+                                item.Text = literalNode.Value;
+                            }
+                        }
+                    }
+                }
             }
 
-            throw new NotImplementedException();
+            return result;
         }
 
         /// <summary>
@@ -81,7 +122,7 @@ namespace todo
             // https://www.w3.org/TR/turtle/#predicate-lists
             // this will produce an example of predicate lists
             // where we have 1 subject, but multiple predicates
-         
+
             var subjectNode = _graph.CreateUriNode(new Uri(_baseUri + "#" + item.Id));
 
             var predicateType = _graph.CreateUriNode("rdf:");
@@ -159,6 +200,45 @@ namespace todo
         #endregion
 
         #region Private Methods
+        private ToDo GetOrAddItem(List<ToDo> items, int id)
+        {
+            if (ListHasItem(items, id))
+            {
+                return GetItem(items, id);
+            }
+            else
+            {
+                var item = new ToDo { Id = id };
+                items.Add(item);
+                return item;
+            }
+        }
+
+        private bool ListHasItem(List<ToDo> items, int id)
+        {
+            foreach (var item in items)
+            {
+                if (item.Id == id)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private ToDo GetItem(List<ToDo> items, int id)
+        {
+            foreach (var item in items)
+            {
+                if (item.Id == id)
+                {
+                    return item;
+                }
+            }
+
+            return null;
+        }
         #endregion
     }
 }
