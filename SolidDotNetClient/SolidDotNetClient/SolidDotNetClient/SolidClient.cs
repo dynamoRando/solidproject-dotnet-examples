@@ -68,6 +68,11 @@ namespace SolidDotNet
         #endregion
 
         #region Public Methods
+        /// <summary>
+        /// Checks for the existence of the specified folder at the pod. If it does not exist, it will create it and reload the internal collection
+        /// </summary>
+        /// <param name="folder">The folder to check for</param>
+        /// <returns>The uri of the specified folder</returns>
         public async Task<Uri> GetOrCreateFolderAsync(string folder)
         {
             if (!_folders.Contains(folder))
@@ -76,7 +81,6 @@ namespace SolidDotNet
                 await CreateFolderAsync(folder);
                 // then reload the folder collection
                 await GetContainersAsync();
-
                 // and then return back to the user
                 return _folders.Get(folder);
             }
