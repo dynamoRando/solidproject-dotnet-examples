@@ -29,6 +29,7 @@
     string appName = "BlazorToDo";
     string folderName = "todo";
 
+    ToDoManager _manager;
     List<ToDo> todoItems = new List<ToDo>();
     string userName = string.Empty;
 
@@ -46,6 +47,7 @@
     {
         GetQueryStringValues();
         navigation.LocationChanged += HandleLocationChanged;
+        ConfigureToDoManager();
     }
 
     void GetQueryStringValues()
@@ -82,12 +84,20 @@
         DebugOut($"{folder.PathAndQuery} exists!");
     }
 
-        private void DebugOut(string item)
+    private void DebugOut(string item)
+    {
+        if (useDebug)
         {
-            if (useDebug)
-            {
-                Console.WriteLine(item);
-                Debug.WriteLine(item);
-            }
+            Console.WriteLine(item);
+            Debug.WriteLine(item);
         }
+    }
+
+    private void ConfigureToDoManager()
+    {
+        if (_manager is null)
+        {
+            _manager = new ToDoManager();
+        }
+    }
 }
