@@ -42,6 +42,10 @@ namespace todo
 
         public void AddToDo(ToDo item)
         {
+            // https://www.w3.org/TR/turtle/#predicate-lists
+            // this will produce an example of predicate lists
+            // where we have 1 subject, but multiple predicates
+         
             var subjectNode = _graph.CreateUriNode(new Uri(_baseUri + "#" + item.Id));
 
             var predicateType = _graph.CreateUriNode("rdf:");
