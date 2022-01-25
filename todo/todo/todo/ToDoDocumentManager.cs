@@ -93,6 +93,7 @@ namespace todo
         public override string ToString()
         {
             var writer = new StringWriter();
+            _turtleWriter.PrettyPrintMode = true;
             _turtleWriter.Save(_graph, writer);
             return writer.ToString();
         }
