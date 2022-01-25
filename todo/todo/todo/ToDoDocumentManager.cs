@@ -11,6 +11,7 @@ namespace todo
     public class ToDoDocumentManager
     {
         #region Private Fields
+        private string _baseUri = string.Empty;
         
         // a graph represents an RDF document
         private Graph _graph;
@@ -34,22 +35,27 @@ namespace todo
         #region Public Methods
         public void ConfigureBaseUri(string uri)
         {
+            _baseUri = uri;
             _graph.BaseUri = new Uri(uri);
             SetupPrefixes();
         }
 
         public void AddToDo(ToDo item)
         {
-            var subjectNode = _graph.CreateUriNode("type:");
-            var predicateNode = _graph.CreateUriNode("text:");
-            var literalNode = _graph.CreateLiteralNode(item.Text);
+            var subjectNode = _graph.CreateUriNode(new Uri(_baseUri + "#" + item.Id));
 
-            var triple = new Triple(subjectNode, predicateNode, literalNode);
+            var predicateType = _graph.CreateUriNode("rdf:");
+            var objectType = _graph.CreateUriNode("type:");
 
-            if (!_graph.Assert(triple))
-            {
-                throw new InvalidOperationException();
-            }
+            var predicateCreated = _graph.CreateUriNode("created:");
+            var objectCreatedType = _graph.CreateLiteralNode(DateTime.Now.ToString());
+
+            var predicateText = _graph.CreateUriNode("text:");
+            var objectText = _graph.CreateLiteralNode(item.Text);
+
+            _graph.Assert(subjectNode, predicateType, objectType);
+            _graph.Assert(subjectNode, predicateCreated, objectCreatedType);
+            _graph.Assert(subjectNode, predicateText, objectText);
         }
 
         public void SetupPrefixes()
