@@ -104,6 +104,8 @@ namespace todo
                     rdf:type  ldp:RDFSource .
              */
 
+            _graph.NamespaceMap.Clear();
+
             _graph.NamespaceMap.AddNamespace("as", UriFactory.Create("https://www.w3.org/ns/activitystreams#"));
 
             // http://www.w3.org/1999/02/22-rdf-syntax-ns
