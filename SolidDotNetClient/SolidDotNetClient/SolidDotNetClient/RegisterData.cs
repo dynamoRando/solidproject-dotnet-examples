@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace SolidDotNetClient
 {
+    /// <summary>
+    /// A generated class representing the Json sent back from the Identity Provider after dynamic client registration
+    /// </summary>
     internal class RegisterData
     {
 

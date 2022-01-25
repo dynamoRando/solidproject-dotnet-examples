@@ -41,7 +41,7 @@ namespace SolidDotNet
         private static string _clientAccessToken;
 
         // values at the pod
-        private static Graph _containers;
+        private static UriCollection _folders;
         #endregion
 
         #region Public Properties
@@ -543,6 +543,13 @@ namespace SolidDotNet
         #region Private Methods
         private async Task GetContainersAsync()
         {
+            if (_folders is null)
+            {
+                _folders = new UriCollection();
+            }
+
+            _folders.Clear();
+
             if (!string.IsNullOrEmpty(IdentityProviderUrl))
             {
                 if (_client is not null)
@@ -552,10 +559,23 @@ namespace SolidDotNet
 
                     var parser = new TurtleParser();
                     var g = new Graph();
-                    g.BaseUri = new Uri("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
+                    g.BaseUri = new Uri(IdentityProviderUrl);
                     var reader = new StringReader(text);
                     parser.Load(g, reader);
-                    _containers = g;
+                    var triples = g.Triples;
+                    var subjects = triples.SubjectNodes;
+                    foreach(var subject in subjects)
+                    {
+                        if (subject.NodeType == NodeType.Uri)
+                        {
+                            var item = subject as UriNode;
+                            if (!string.IsNullOrEmpty(item.Uri.AbsolutePath))
+                            {
+                                _folders.Add(item.Uri);
+                                DebugOut($"Discovered item at server: {item.Uri.AbsolutePath}");
+                            }
+                        }
+                    }
                 }
             }
         }

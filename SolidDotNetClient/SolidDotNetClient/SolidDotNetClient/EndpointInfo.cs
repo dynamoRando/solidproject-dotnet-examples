@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace SolidDotNetClient
 {
+    /// <summary>
+    /// A generated class representing the data at a "/.well-known/openid-configuration" URL
+    /// </summary>
     internal class EndpointInfo
     {
         public string authorization_endpoint { get; set; }
