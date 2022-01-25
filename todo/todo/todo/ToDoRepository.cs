@@ -61,9 +61,9 @@ namespace todo
         /// <exception cref="NotImplementedException"></exception>
         public async Task<List<ToDo>> GetAll()
         {
-            var result = await _solidClient.GetContentsOfContainer(_folderName);
+            var hasFile = await _solidClient.ContainerHasFile(_folderName, TODO_FILENAME);
 
-            if (!result.Any(r => r.AbsoluteUri.Contains(TODO_FILENAME)))
+            if (!hasFile)
             {
                 DebugOut("We need to create the to do document");
                 string rdfDocument = string.Empty;
@@ -72,7 +72,9 @@ namespace todo
             else
             {
                 // we need to read the to do list document
+                var rdfText = _solidClient.GetRdfDocument(_folderName, TODO_FILENAME);
                 DebugOut("We need to read the to do document");
+                
             }
 
             throw new NotImplementedException();

@@ -211,6 +211,48 @@ namespace SolidDotNet
             }
         }
 
+        public async Task<string> GetRdfDocument(string folderName, string docName)
+        {
+            var uri = _folders.Get(folderName);
+
+            if (uri is not null)
+            {
+                if (_identityProviderUrl is not null)
+                {
+                    if (_client is not null)
+                    {                      
+                        var docLocation = uri.OriginalString + docName;
+
+                        try
+                        {
+                            _client.DefaultRequestHeaders.Clear();
+                            _client.DefaultRequestHeaders.Add("accept", "text/turtle");
+                            _client.DefaultRequestHeaders.Add("authorization", "DPoP " + Access_Token);
+                            _client.DefaultRequestHeaders.Add("DPoP", BuildJwtForContent("GET", docLocation));
+                            var response = await _client.GetAsync(docLocation);
+
+                            DebugOut(response.StatusCode.ToString());
+
+                            if (response.StatusCode == HttpStatusCode.OK)
+                            {
+                                var text = response.Content.ReadAsStringAsync().Result;
+                                DebugOut(text);
+
+                                return text;
+
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            DebugOut(ex.ToString());
+                        }
+                    }
+                }
+            }
+
+            return string.Empty;
+        }
+
         /// <summary>
         /// Creates a document in the specified folder at the pod with the specific name and content
         /// </summary>
@@ -782,6 +824,25 @@ namespace SolidDotNet
             return text;
         }
 
+        /// <summary>
+        /// Gets the contents of the container (folder) and checks to see if the specified file exists in it
+        /// </summary>
+        /// <param name="containerName">The name of container/folder</param>
+        /// <param name="fileName">The name of the file in the container</param>
+        /// <returns><c>TRUE</c> if the file exists in the container, otherwise <c>FALSE</c></returns>
+        /// <remarks>Executed via an HTTP GET</remarks>
+        public async Task<bool> ContainerHasFile(string containerName, string fileName)
+        {
+            var result = await GetContentsOfContainer(containerName);
+            return result.Any(r => r.AbsoluteUri.Contains(fileName));
+        }
+
+        /// <summary>
+        /// Returns a list of URIs of the specified container (folder) name at the pod
+        /// </summary>
+        /// <param name="containerName">The name of the container/folder</param>
+        /// <returns></returns>
+        /// <remarks>Executed via an HTTP GET</remarks>
         public async Task<List<Uri>> GetContentsOfContainer(string containerName)
         {
             string uri = string.Empty;
@@ -840,6 +901,7 @@ namespace SolidDotNet
         #endregion
 
         #region Private Methods
+
         /// <summary>
         /// Creates a container (folder) at the pod via HTTP POST
         /// </summary>
