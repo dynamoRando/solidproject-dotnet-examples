@@ -40,7 +40,9 @@ namespace todo
         {
             if (_solidClient is not null)
             {
+                _uri = _solidClient.IdentityProviderUrl;
                 _folderName = toDoFolderName;
+                _docManager.ConfigureBaseUri(GetDocumentUri());
 
                 var folder = await _solidClient.GetOrCreateFolderAsync(toDoFolderName);
                 if (folder is not null)
@@ -67,7 +69,7 @@ namespace todo
             {
                 DebugOut("We need to create the to do document");
 
-                // leverage the ToDoDocumentManager her to create RDF text
+                // leverage the ToDoDocumentManager here to create RDF text
                 string rdfDocument = string.Empty;
                 await _solidClient.CreateRdfDocumentAsync(_folderName, TODO_FILENAME, rdfDocument);
             }
@@ -121,7 +123,8 @@ namespace todo
                 _uri = _uri + "/";
             }
 
-            return _uri + TODO_FILENAME;
+            var result = _uri + _folderName + "/" + TODO_FILENAME;
+            return result;
         }
         #endregion
 
