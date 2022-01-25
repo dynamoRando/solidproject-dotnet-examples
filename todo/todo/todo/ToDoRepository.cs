@@ -66,13 +66,16 @@ namespace todo
             if (!hasFile)
             {
                 DebugOut("We need to create the to do document");
+
+                // leverage the ToDoDocumentManager her to create RDF text
                 string rdfDocument = string.Empty;
                 await _solidClient.CreateRdfDocumentAsync(_folderName, TODO_FILENAME, rdfDocument);
             }
             else
             {
-                // we need to read the to do list document
                 DebugOut("We need to read the to do document");
+
+                // grab the RDF raw text and pass to ToDoDocumentManager to handle
                 var rdfText = _solidClient.GetRdfDocument(_folderName, TODO_FILENAME);
             }
 
