@@ -55,7 +55,6 @@ namespace todo
             }
             else
             {
-                // need to parse the triples for To Do items
                 int currentItem = 0;
                 foreach (var triple in _graph.Triples)
                 {

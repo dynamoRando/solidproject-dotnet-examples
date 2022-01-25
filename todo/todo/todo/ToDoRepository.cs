@@ -70,7 +70,6 @@ namespace todo
             {
                 DebugOut("We need to create the to do document");
 
-                // leverage the ToDoDocumentManager here to create RDF text
                 _docManager.SetupPrefixes();
                 string rdfDocument = _docManager.ToString();
                 await _solidClient.CreateRdfDocumentAsync(_folderName, TODO_FILENAME, rdfDocument);
@@ -79,7 +78,6 @@ namespace todo
             {
                 DebugOut("We need to read the to do document");
 
-                // grab the RDF raw text and pass to ToDoDocumentManager to handle
                 var rdfText = await _solidClient.GetRdfDocument(_folderName, TODO_FILENAME);
                 var items = _docManager.ParseDocument(rdfText);
                 return items;
