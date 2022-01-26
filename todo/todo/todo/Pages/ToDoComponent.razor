@@ -18,7 +18,7 @@
 </p>
 
 <p>
-    <button class="btn btn-primary" @onclick="LoadToDosAsync">Load To Dos</button>
+    <button class="btn btn-primary" @onclick="LoadToDosAsync">Load To Dos</button> This will pull the To Dos from our Solid Pod.
 </p>
 
 <h4>Add To Do:</h4>
@@ -88,17 +88,23 @@
 
     private string currentToDo = string.Empty;
 
-    private static string idToModify = string.Empty;
-    private static string textToModify = string.Empty;
+    private string idToModify = string.Empty;
+    private string textToModify = string.Empty;
 
-    private static string idToDelete = string.Empty;
+    private string idToDelete = string.Empty;
 
     private async Task ModifyToDoAsync()
     {
         if (!string.IsNullOrEmpty(idToModify))
         {
-            var id = Convert.ToInt32(idToModify);
-            await _repository.UpdateToDoAsync(id, textToModify);
+            int id;
+            if (int.TryParse(idToModify, out id))
+            {
+                if (_repository.HasToDoId(id))
+                {
+                    await _repository.UpdateToDoAsync(id, textToModify);
+                }
+            }
         }
     }
 
@@ -106,8 +112,15 @@
     {
         if (!string.IsNullOrEmpty(idToDelete))
         {
-            var id = Convert.ToInt32(idToDelete);
-            await _repository.DeleteToDoItem(id);
+            int id;
+            if (int.TryParse(idToDelete, out id))
+            {
+                if (_repository.HasToDoId(id))
+                {
+                    await _repository.DeleteToDoItem(id);
+                }
+            }
+
         }
     }
 

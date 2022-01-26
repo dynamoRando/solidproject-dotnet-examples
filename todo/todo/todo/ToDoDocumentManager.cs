@@ -37,6 +37,17 @@ namespace todo
         #endregion
 
         #region Public Methods
+
+        /// <summary>
+        /// Walks the RDF document to see if the specified to do item id exists
+        /// </summary>
+        /// <param name="id">The id of the to do item</param>
+        /// <returns><c>TRUE</c> if the id exists, otherwise <c>FALSE</c></returns>
+        public bool HasToDoId(int id)
+        {
+            return GetToDosFromGraph().Any(todo => todo.Id == id);
+        }
+
         /// <summary>
         /// Parses the supplied rdf text and returns a list of To Do items in that document
         /// </summary>

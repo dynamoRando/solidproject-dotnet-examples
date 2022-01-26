@@ -31,7 +31,17 @@ namespace todo
         #endregion
 
         #region Public Methods
-       
+
+        /// <summary>
+        /// Checks the backing RDF document to see if the specified id is in the document
+        /// </summary>
+        /// <param name="id">The id to check for</param>
+        /// <returns><c>TRUE</c> if the id is found, otherwise <c>FALSE</c></returns>
+        public bool HasToDoId(int id)
+        {
+            return _docManager.HasToDoId(id);
+        }
+
         /// <summary>
         /// Checks for the existence of the "to do" folder at our Solid Pod and creates it if it does not exist
         /// </summary>
@@ -120,7 +130,7 @@ namespace todo
         {
             _docManager.AddToDo(item);
             var rdfText = _docManager.ToString();
-            await _solidClient.UpdateRdfDocumentAsync(_folderName, TODO_FILENAME,rdfText);
+            await _solidClient.UpdateRdfDocumentAsync(_folderName, TODO_FILENAME, rdfText);
         }
 
         /// <summary>

@@ -5,13 +5,21 @@
 
 <h3>To Do Page</h3>
 
-<p>This page is the front facing page for our To Do app. The actual component handling To Do items, rendering, etc is handled by the 
+<p>
+    This page is the front facing page for our To Do app. The actual component handling To Do items, rendering, etc is handled by the
     Blazor ToDoComponent, which is embedded in this page.
 </p>
 
 <p>To get started, please first login. If we are successful, we should be able to read your name from the pod.</p>
 
+<p>Note that this page is a crude implementation for a UI. It is intended to be demostrative only.</p>
+
 <p>
+    <label>
+        URL for Community Solid Server:
+        <input value="@identityProvider"
+               @onchange="@((ChangeEventArgs __e) => identityProvider = __e?.Value?.ToString())" />
+    </label>
     <button class="btn btn-primary" @onclick="LoginToSolidAsync">Login To Solid Community Server</button>
 </p>
 
@@ -24,14 +32,13 @@
     </label>
 </p>
 
-
-
 <ToDoComponent></ToDoComponent>
 
 @code {
-    string identityProvider = "http://localhost:3000";
+    string identityProvider = string.Empty;
+    string defaultIdentityProvider = "http://localhost:3000";
     string appName = "BlazorToDo";
-  
+
     List<ToDo> todoItems = new List<ToDo>();
     string userName = string.Empty;
 
@@ -39,8 +46,25 @@
 
     private async Task LoginToSolidAsync()
     {
-        string[] redirectUris = new string[1] { "https://localhost:7143/todo" };
-        await client.RegisterAppAsync(identityProvider, redirectUris, appName);
+        string communityServerUrl = string.Empty;
+
+        if (string.IsNullOrEmpty(identityProvider))
+        {
+            communityServerUrl = defaultIdentityProvider;
+        }
+        else
+        {
+            communityServerUrl = identityProvider;
+
+            if (communityServerUrl.EndsWith("/"))
+            {
+                communityServerUrl = communityServerUrl.Remove(communityServerUrl.Length - 1, 1);
+            }
+        }
+        string redirect = navigation.BaseUri + "todo";
+
+        string[] redirectUris = new string[1] { redirect };
+        await client.RegisterAppAsync(communityServerUrl, redirectUris, appName);
         var url = await client.GetLoginUrlAsync(redirectUris.First());
         navigation.NavigateTo(url);
     }
@@ -49,7 +73,7 @@
     {
         GetQueryStringValues();
         navigation.LocationChanged += HandleLocationChanged;
-        
+
     }
 
     void GetQueryStringValues()
@@ -89,5 +113,5 @@
         }
     }
 
-   
+
 }
