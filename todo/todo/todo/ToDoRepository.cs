@@ -87,6 +87,31 @@ namespace todo
         }
 
         /// <summary>
+        /// Removes the to do item in the document and updates at the pod
+        /// </summary>
+        /// <param name="id">The id of the item to remove</param>
+        /// <returns></returns>
+        public async Task DeleteToDoItem(int id)
+        {
+            _docManager.RemoveToDo(id);
+            var rdfText = _docManager.ToString();
+            await _solidClient.UpdateRdfDocumentAsync(_folderName, TODO_FILENAME, rdfText);
+        }
+
+        /// <summary>
+        /// Updates the to do item text in the document and updates at the pod
+        /// </summary>
+        /// <param name="id">The id of the itme to update</param>
+        /// <param name="text">The text to update the item to</param>
+        /// <returns></returns>
+        public async Task UpdateToDoAsync(int id, string text)
+        {
+            _docManager.UpdateToDo(id, text);
+            var rdfText = _docManager.ToString();
+            await _solidClient.UpdateRdfDocumentAsync(_folderName, TODO_FILENAME, rdfText);
+        }
+
+        /// <summary>
         /// Adds a To Do item to the pod
         /// </summary>
         /// <param name="item"></param>

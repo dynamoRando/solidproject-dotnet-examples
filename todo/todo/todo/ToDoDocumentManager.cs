@@ -1,4 +1,5 @@
-﻿using todo.Data;
+﻿using System.Diagnostics;
+using todo.Data;
 using VDS.RDF;
 using VDS.RDF.Parsing;
 using VDS.RDF.Writing;
@@ -12,6 +13,8 @@ namespace todo
     public class ToDoDocumentManager
     {
         #region Private Fields
+        private bool _useDebug = true;
+
         private string _baseUri = string.Empty;
 
         // a graph represents an RDF document
@@ -39,66 +42,14 @@ namespace todo
         /// </summary>
         /// <param name="rdfText">The RDF document from our Solid Pod</param>
         /// <returns>A List of To Do Items</returns>
-        /// <exception cref="NotImplementedException"></exception>
         public List<ToDo> ParseDocument(string rdfText)
         {
-            var result = new List<ToDo>();
-
             var parser = new TurtleParser();
             _graph.BaseUri = new Uri(_baseUri);
             var reader = new StringReader(rdfText);
             parser.Load(_graph, reader);
 
-            if (_graph.Triples.Count == 0)
-            {
-                return result;
-            }
-            else
-            {
-                int currentItem = 0;
-                foreach (var triple in _graph.Triples)
-                {
-                    if (triple.Subject.NodeType == NodeType.Uri)
-                    {
-                        var uriNode = triple.Subject as UriNode;
-                        if (uriNode.Uri.AbsoluteUri.Contains("index.ttl#"))
-                        {
-                            var idLine = uriNode.Uri.AbsoluteUri;
-                            var id = idLine.Replace(_baseUri, string.Empty).Replace("#", string.Empty);
-
-                            int idValue = Convert.ToInt32(id);
-                            var item = GetOrAddItem(result, idValue);
-                            currentItem = item.Id;
-                        }
-                    }
-
-                    if (triple.Predicate.NodeType == NodeType.Uri)
-                    {
-                        var uriNode = triple.Predicate as UriNode;
-                        if (uriNode.Uri.AbsoluteUri.Contains("#created"))
-                        {
-                            if (triple.Object.NodeType == NodeType.Literal)
-                            {
-                                var literalNode = triple.Object as LiteralNode;
-                                var item = GetItem(result, currentItem);
-                                item.Created = DateTime.Parse(literalNode.Value);
-                            }
-                        }
-
-                        if (uriNode.Uri.AbsoluteUri.Contains("text"))
-                        {
-                            if (triple.Object.NodeType == NodeType.Literal)
-                            {
-                                var literalNode = triple.Object as LiteralNode;
-                                var item = GetItem(result, currentItem);
-                                item.Text = literalNode.Value;
-                            }
-                        }
-                    }
-                }
-            }
-
-            return result;
+            return GetToDosFromGraph();
         }
 
         /// <summary>
@@ -110,6 +61,49 @@ namespace todo
             _baseUri = uri;
             _graph.BaseUri = new Uri(uri);
             SetupPrefixes();
+        }
+
+        /// <summary>
+        ///  Updates the specified to do item in the RDF document with the provided text
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="todoText"></param>
+        public void UpdateToDo(int id, string todoText)
+        {
+            var itemToUpdate = GetToDosFromGraph().Where(todo => todo.Id == id).FirstOrDefault();
+
+            if (itemToUpdate is not null)
+            {
+                try
+                {
+                    itemToUpdate.Text = todoText;
+                    RemoveToDo(id);
+                    AddToDo(itemToUpdate);
+                }
+                catch (Exception ex)
+                {
+                    DebugOut(ex.ToString());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Removes the to do item from the RDF document
+        /// </summary>
+        /// <param name="id">The id of the to do item</param>
+        public void RemoveToDo(int id)
+        {
+            try
+            {
+                // the to do item id to remove
+                var subjectToDelete = _graph.CreateUriNode(new Uri(_baseUri + "#" + id));
+                var triples = _graph.GetTriplesWithSubject(subjectToDelete);
+                _graph.Retract(triples);
+            }
+            catch (Exception ex)
+            {
+                DebugOut(ex.ToString());
+            }
         }
 
         /// <summary>
@@ -237,6 +231,71 @@ namespace todo
             }
 
             return null;
+        }
+
+        private List<ToDo> GetToDosFromGraph()
+        {
+            var result = new List<ToDo>();
+
+            if (_graph.Triples.Count == 0)
+            {
+                return new List<ToDo>();
+            }
+            else
+            {
+                int currentItem = 0;
+                foreach (var triple in _graph.Triples)
+                {
+                    if (triple.Subject.NodeType == NodeType.Uri)
+                    {
+                        var uriNode = triple.Subject as UriNode;
+                        if (uriNode.Uri.AbsoluteUri.Contains("index.ttl#"))
+                        {
+                            var idLine = uriNode.Uri.AbsoluteUri;
+                            var id = idLine.Replace(_baseUri, string.Empty).Replace("#", string.Empty);
+
+                            int idValue = Convert.ToInt32(id);
+                            var item = GetOrAddItem(result, idValue);
+                            currentItem = item.Id;
+                        }
+                    }
+
+                    if (triple.Predicate.NodeType == NodeType.Uri)
+                    {
+                        var uriNode = triple.Predicate as UriNode;
+                        if (uriNode.Uri.AbsoluteUri.Contains("#created"))
+                        {
+                            if (triple.Object.NodeType == NodeType.Literal)
+                            {
+                                var literalNode = triple.Object as LiteralNode;
+                                var item = GetItem(result, currentItem);
+                                item.Created = DateTime.Parse(literalNode.Value);
+                            }
+                        }
+
+                        if (uriNode.Uri.AbsoluteUri.Contains("text"))
+                        {
+                            if (triple.Object.NodeType == NodeType.Literal)
+                            {
+                                var literalNode = triple.Object as LiteralNode;
+                                var item = GetItem(result, currentItem);
+                                item.Text = literalNode.Value;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private void DebugOut(string item)
+        {
+            if (_useDebug)
+            {
+                Console.WriteLine(item);
+                Debug.WriteLine(item);
+            }
         }
         #endregion
     }
