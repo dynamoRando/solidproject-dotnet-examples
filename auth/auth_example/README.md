@@ -2,7 +2,7 @@
 
 An example Blazor Server Application leveraging OIDC to login to the Solid Community Server locally. Makes use of [IdentityModel.OidcClient](https://github.com/IdentityModel/IdentityModel.OidcClient) which is licensed as Apache 2.0 and [DotNetRDF](https://dotnetrdf.org/) which is licensed MIT.
 
-This project assumes you have started up the [Solid Community Server](https://github.com/solid/community-server) locally on your machine and that it is running at http://localhost:3000/ and you've run the setup. For startup instructions on the Solid Community Server, see [here](https://solidproject.org//self-hosting/css).
+This project assumes you have started up the [Community Solid Server](https://github.com/solid/community-server) locally on your machine and that it is running at http://localhost:3000/ and you've run the setup. For startup instructions on the Solid Community Server, see [here](https://solidproject.org//self-hosting/css).
 
 The goal of this project is to reproduce the actions of the [first app](https://solidproject.org/developers/tutorials/first-app) demo on the Solid Project website.
 
