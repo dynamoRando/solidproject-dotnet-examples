@@ -1,0 +1,170 @@
+﻿@using System.Diagnostics
+@using todo.Data
+@inject SolidDotNet.SolidClient client
+@inject NavigationManager navigation
+
+
+<h3>To Do Component</h3>
+
+<p>
+    This component handles the UI actions for To Do items. It is backed by a ToDoRepository object, which is somewhat analogus to a
+    <a href="https://www.mrjamiebowman.com/software-development/dotnet/repository-pattern/">repository.</a> We are leveraging the
+    ToDoRepository to abstract away some of the other concepts, such as RDF, LDP, etc.
+</p>
+
+<p>
+    Our ToDoRepository object internally uses an in-progess developed SolidClient object to handle basic interactions with our Solid Pod.
+    The SolidClient API isn't fully developed yet.
+</p>
+
+<p>
+    <button class="btn btn-primary" @onclick="LoadToDosAsync">Load To Dos</button> This will pull the To Dos from our Solid Pod.
+</p>
+
+<h4>Add To Do:</h4>
+<p>
+    <label>
+        To Do Task To Add:
+        <input value="@currentToDo"
+               @onchange="@((ChangeEventArgs __e) => currentToDo = __e?.Value?.ToString())" />
+    </label>
+    <button class="btn btn-primary" @onclick="AddToDo">Add To Do Item</button>
+</p>
+
+<h4>Update To Do Text:</h4>
+<p>
+    <label>
+        To Do Task Id To Modify:
+        <input value="@idToModify"
+               @onchange="@((ChangeEventArgs __e) => idToModify = __e?.Value?.ToString())" />
+    </label>
+    <label>
+        To Do Task To Modify:
+        <input value="@textToModify"
+               @onchange="@((ChangeEventArgs __e) => textToModify = __e?.Value?.ToString())" />
+    </label>
+    <button class="btn btn-primary" @onclick="ModifyToDoAsync">Update To Do Item</button>
+</p>
+
+<h4>Delete To Do:</h4>
+<p>
+    <label>
+        To Do Task Id To Delete:
+        <input value="@idToDelete"
+               @onchange="@((ChangeEventArgs __e) => idToDelete = __e?.Value?.ToString())" />
+    </label>
+    <button class="btn btn-primary" @onclick="DeleteToDoAsync">Delete To Do Item</button>
+</p>
+
+<div class="container">
+    <h3 class="p-3 text-center">To Do Items</h3>
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Created</th>
+                <th>Text</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var todo in _toDos)
+            {
+                <tr>
+                    <td>@todo.Id.ToString()</td>
+                    <td>@todo.Created.ToString()</td>
+                    <td>@todo.Text</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private ToDoRepository _repository;
+    private bool useDebug = true;
+    private string folderName = "todo";
+    private static int idCount = 0;
+    private List<todo.Data.ToDo> _toDos = new List<todo.Data.ToDo>();
+
+    private string currentToDo = string.Empty;
+
+    private string idToModify = string.Empty;
+    private string textToModify = string.Empty;
+
+    private string idToDelete = string.Empty;
+
+    private async Task ModifyToDoAsync()
+    {
+        if (!string.IsNullOrEmpty(idToModify))
+        {
+            int id;
+            if (int.TryParse(idToModify, out id))
+            {
+                if (_repository.HasToDoId(id))
+                {
+                    await _repository.UpdateToDoAsync(id, textToModify);
+                }
+            }
+        }
+    }
+
+    private async Task DeleteToDoAsync()
+    {
+        if (!string.IsNullOrEmpty(idToDelete))
+        {
+            int id;
+            if (int.TryParse(idToDelete, out id))
+            {
+                if (_repository.HasToDoId(id))
+                {
+                    await _repository.DeleteToDoItem(id);
+                }
+            }
+
+        }
+    }
+
+    protected async override void OnInitialized()
+    {
+        ConfigureToDoManager();
+    }
+
+    private void ConfigureToDoManager()
+    {
+        if (_repository is null)
+        {
+            _repository = new ToDoRepository();
+        }
+
+        _repository.SetSolidClient(client);
+    }
+
+    private async Task LoadToDosAsync()
+    {
+        _toDos.Clear();
+        await _repository.InitAsync(folderName);
+        var items = await _repository.GetAllAsync();
+        foreach (var item in items)
+        {
+            _toDos.Add(item);
+        }
+    }
+
+    private void DebugOut(string item)
+    {
+        if (useDebug)
+        {
+            Console.WriteLine(item);
+            Debug.WriteLine(item);
+        }
+    }
+
+    private async Task AddToDo()
+    {
+        idCount = _toDos.Max(i => i.Id);
+        var id = idCount + 1;
+        var item = new todo.Data.ToDo { Created = DateTime.Now, Id = id, Text = currentToDo };
+        await _repository.AddAsync(item);
+    }
+
+}

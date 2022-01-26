@@ -6,3 +6,13 @@
 /auth/auth_example/.vs/auth_example
 /auth/auth_example/auth_example/bin/Debug/net6.0
 /auth/auth_example/auth_example/obj
+/todo/todo/.vs/todo/v17
+/todo/todo/todo/bin/Debug/net6.0
+/todo/todo/todo/obj
+/SolidDotNetClient/SolidDotNetClient/.vs/SolidDotNetClient
+/SolidDotNetClient/SolidDotNetClient/SolidDotNetClient/bin/Debug/net6.0
+/SolidDotNetClient/SolidDotNetClient/SolidDotNetClient/obj
+/todo/todo/.vs/todo/DesignTimeBuild
+/todo/todo/todo.Tests/bin/Debug/net6.0
+/todo/todo/todo.Tests/obj
+/auth/auth_example/.vscode
