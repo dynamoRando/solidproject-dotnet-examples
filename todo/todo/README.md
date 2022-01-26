@@ -19,7 +19,8 @@ For startup instructions on the Community Solid Server, see [here](https://solid
 | IdentityModel.OdicClient | 5.0.0   | Apache License    |
 | DotNetRDF                | 2.7.2   | MIT License       |
 | Newtonsoft.Json          | 13.0.1  | MIT License       |
-| 
+
+
 # App Walkthru
 ## Quick Notes
 One of the nice things about Solid is that it is built on top of [open standards](https://github.com/solid/solid#about-solid); therefore as long as the technology stack you are working with understands these standards, you can implement a front end to a Solid server in any platform you like.
